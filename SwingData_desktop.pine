@@ -346,12 +346,15 @@ clamp_to_band(float p, float anchor, float max_dist) =>
     (p - anchor) > max_dist  ? anchor + max_dist :
       (anchor - p) > max_dist ? anchor - max_dist : p
 
-level_is_relevant(float p) =>
-    near_band = close * (near_level_pct / 100.0)
-    overlaps_today = not na(p) and not na(session_lod) and not na(session_hod) and p >= session_lod and p <= session_hod
-    near_close = not na(p) and math.abs(p - close) <= near_band
-    near_day_low = not na(p) and not na(session_lod) and math.abs(p - session_lod) <= near_band
+level_is_relevant_at(float p, float anchor_close, float anchor_lod, float anchor_hod) =>
+    near_band = anchor_close * (near_level_pct / 100.0)
+    overlaps_today = not na(p) and not na(anchor_lod) and not na(anchor_hod) and p >= anchor_lod and p <= anchor_hod
+    near_close = not na(p) and math.abs(p - anchor_close) <= near_band
+    near_day_low = not na(p) and not na(anchor_lod) and math.abs(p - anchor_lod) <= near_band
     not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low
+
+level_is_relevant(float p) =>
+    level_is_relevant_at(p, close, session_lod, session_hod)
 
 
 // --- LABEL ANTI-OVERLAP HELPERS (horizontal stagger, parallel arrays) ---
@@ -396,15 +399,90 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
 is_right_visible_bar = time == chart.right_visible_bar_time
 is_complete_visible_rth_day = timeframe.isintraday and is_rth_close_bar and not na(session_start_time) and session_start_time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
 var bool found_complete_visible_rth_day = false
+var int anchor_session_start_bar = na
+var int anchor_bar_index = na
+var float anchor_close = na
+var float anchor_session_hod = na
+var float anchor_session_lod = na
+var float anchor_sma5_d = na
+var float anchor_sma10_d = na
+var float anchor_sma20_d = na
+var float anchor_sma50_d = na
+var float anchor_sma150_d = na
+var float anchor_sma200_d = na
+var float anchor_ema10_d = na
+var float anchor_ema20_d = na
+var float anchor_ema50_d = na
+var float anchor_prev_high = na
+var float anchor_prev_low = na
+var float anchor_or5_high = na
+var float anchor_or30_high = na
+var float anchor_calc_rvol = na
+var float anchor_calc_lodd = na
+var float anchor_chart_lod = na
+var float anchor_calc_atr_pct = na
+var float anchor_calc_gain_from_ma = na
+var float anchor_calc_atr_mult_from_ma = na
+var bool anchor_is_atr_extended = false
 if barstate.isfirst
     found_complete_visible_rth_day := false
 if is_complete_visible_rth_day
     found_complete_visible_rth_day := true
-is_visible_replay_fallback = timeframe.isintraday and is_right_visible_bar and not found_complete_visible_rth_day
-is_data_anchor_bar = use_visible_replay ? (timeframe.isintraday ? (is_complete_visible_rth_day or is_visible_replay_fallback) : is_right_visible_bar) : barstate.islast
-target_index = bar_index + offset
+    anchor_session_start_bar := session_start_bar
+    anchor_bar_index := bar_index
+    anchor_close := close
+    anchor_session_hod := session_hod
+    anchor_session_lod := session_lod
+    anchor_sma5_d := sma5_d
+    anchor_sma10_d := sma10_d
+    anchor_sma20_d := sma20_d
+    anchor_sma50_d := sma50_d
+    anchor_sma150_d := sma150_d
+    anchor_sma200_d := sma200_d
+    anchor_ema10_d := ema10_d
+    anchor_ema20_d := ema20_d
+    anchor_ema50_d := ema50_d
+    anchor_prev_high := prev_high
+    anchor_prev_low := prev_low
+    anchor_or5_high := or5_high
+    anchor_or30_high := or30_high
+    anchor_calc_rvol := calc_rvol
+    anchor_calc_lodd := calc_lodd
+    anchor_chart_lod := chart_lod
+    anchor_calc_atr_pct := calc_atr_pct
+    anchor_calc_gain_from_ma := calc_gain_from_ma
+    anchor_calc_atr_mult_from_ma := calc_atr_mult_from_ma
+    anchor_is_atr_extended := is_atr_extended
+use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and found_complete_visible_rth_day
+is_data_anchor_bar = use_visible_replay ? (timeframe.isintraday ? is_right_visible_bar : is_right_visible_bar) : barstate.islast
+active_session_start_bar = use_complete_visible_rth_day ? anchor_session_start_bar : session_start_bar
+active_bar_index = use_complete_visible_rth_day ? anchor_bar_index : bar_index
+active_close = use_complete_visible_rth_day ? anchor_close : close
+active_session_hod = use_complete_visible_rth_day ? anchor_session_hod : session_hod
+active_session_lod = use_complete_visible_rth_day ? anchor_session_lod : session_lod
+active_sma5_d = use_complete_visible_rth_day ? anchor_sma5_d : sma5_d
+active_sma10_d = use_complete_visible_rth_day ? anchor_sma10_d : sma10_d
+active_sma20_d = use_complete_visible_rth_day ? anchor_sma20_d : sma20_d
+active_sma50_d = use_complete_visible_rth_day ? anchor_sma50_d : sma50_d
+active_sma150_d = use_complete_visible_rth_day ? anchor_sma150_d : sma150_d
+active_sma200_d = use_complete_visible_rth_day ? anchor_sma200_d : sma200_d
+active_ema10_d = use_complete_visible_rth_day ? anchor_ema10_d : ema10_d
+active_ema20_d = use_complete_visible_rth_day ? anchor_ema20_d : ema20_d
+active_ema50_d = use_complete_visible_rth_day ? anchor_ema50_d : ema50_d
+active_prev_high = use_complete_visible_rth_day ? anchor_prev_high : prev_high
+active_prev_low = use_complete_visible_rth_day ? anchor_prev_low : prev_low
+active_or5_high = use_complete_visible_rth_day ? anchor_or5_high : or5_high
+active_or30_high = use_complete_visible_rth_day ? anchor_or30_high : or30_high
+active_calc_rvol = use_complete_visible_rth_day ? anchor_calc_rvol : calc_rvol
+active_calc_lodd = use_complete_visible_rth_day ? anchor_calc_lodd : calc_lodd
+active_chart_lod = use_complete_visible_rth_day ? anchor_chart_lod : chart_lod
+active_calc_atr_pct = use_complete_visible_rth_day ? anchor_calc_atr_pct : calc_atr_pct
+active_calc_gain_from_ma = use_complete_visible_rth_day ? anchor_calc_gain_from_ma : calc_gain_from_ma
+active_calc_atr_mult_from_ma = use_complete_visible_rth_day ? anchor_calc_atr_mult_from_ma : calc_atr_mult_from_ma
+active_is_atr_extended = use_complete_visible_rth_day ? anchor_is_atr_extended : is_atr_extended
+target_index = active_bar_index + offset
 target_label_index = target_index + label_offset
-should_create_levels = timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
+should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
@@ -435,47 +513,47 @@ if should_create_levels
     line.delete(l_or30h)
     label.delete(lbl_or30h)
 
-    if show_5 and level_is_relevant(sma5_d)
-        l_sma5    := line.new(session_start_bar, sma5_d, target_index, sma5_d, color=col_5, width=w_5, style=get_style(style_5))
-        lbl_sma5  := label.new(target_label_index, sma5_d, get_name("5D SMA"), color=color.new(color.black, 100), textcolor=col_5, style=label.style_label_left, tooltip=get_text("5D SMA", sma5_d))
-    if show_10 and level_is_relevant(sma10_d)
-        l_sma10   := line.new(session_start_bar, sma10_d, target_index, sma10_d, color=col_10, width=w_10, style=get_style(style_10))
-        lbl_sma10 := label.new(target_label_index, sma10_d, get_name("10D SMA"), color=color.new(color.black, 100), textcolor=col_10, style=label.style_label_left, tooltip=get_text("10D SMA", sma10_d))
-    if show_20 and level_is_relevant(sma20_d)
-        l_sma20   := line.new(session_start_bar, sma20_d, target_index, sma20_d, color=col_20, width=w_20, style=get_style(style_20))
-        lbl_sma20 := label.new(target_label_index, sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", sma20_d))
-    if show_50 and level_is_relevant(sma50_d)
-        l_sma50   := line.new(session_start_bar, sma50_d, target_index, sma50_d, color=col_50, width=w_50, style=get_style(style_50))
-        lbl_sma50 := label.new(target_label_index, sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", sma50_d))
-    if show_150 and level_is_relevant(sma150_d)
-        l_sma150  := line.new(session_start_bar, sma150_d, target_index, sma150_d, color=col_150, width=w_150, style=get_style(style_150))
-        lbl_sma150:= label.new(target_label_index, sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", sma150_d))
-    if show_200 and level_is_relevant(sma200_d)
-        l_sma200  := line.new(session_start_bar, sma200_d, target_index, sma200_d, color=col_200, width=w_200, style=get_style(style_200))
-        lbl_sma200:= label.new(target_label_index, sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", sma200_d))
+    if show_5 and level_is_relevant_at(active_sma5_d, active_close, active_session_lod, active_session_hod)
+        l_sma5    := line.new(active_session_start_bar, active_sma5_d, target_index, active_sma5_d, color=col_5, width=w_5, style=get_style(style_5))
+        lbl_sma5  := label.new(target_label_index, active_sma5_d, get_name("5D SMA"), color=color.new(color.black, 100), textcolor=col_5, style=label.style_label_left, tooltip=get_text("5D SMA", active_sma5_d))
+    if show_10 and level_is_relevant_at(active_sma10_d, active_close, active_session_lod, active_session_hod)
+        l_sma10   := line.new(active_session_start_bar, active_sma10_d, target_index, active_sma10_d, color=col_10, width=w_10, style=get_style(style_10))
+        lbl_sma10 := label.new(target_label_index, active_sma10_d, get_name("10D SMA"), color=color.new(color.black, 100), textcolor=col_10, style=label.style_label_left, tooltip=get_text("10D SMA", active_sma10_d))
+    if show_20 and level_is_relevant_at(active_sma20_d, active_close, active_session_lod, active_session_hod)
+        l_sma20   := line.new(active_session_start_bar, active_sma20_d, target_index, active_sma20_d, color=col_20, width=w_20, style=get_style(style_20))
+        lbl_sma20 := label.new(target_label_index, active_sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", active_sma20_d))
+    if show_50 and level_is_relevant_at(active_sma50_d, active_close, active_session_lod, active_session_hod)
+        l_sma50   := line.new(active_session_start_bar, active_sma50_d, target_index, active_sma50_d, color=col_50, width=w_50, style=get_style(style_50))
+        lbl_sma50 := label.new(target_label_index, active_sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", active_sma50_d))
+    if show_150 and level_is_relevant_at(active_sma150_d, active_close, active_session_lod, active_session_hod)
+        l_sma150  := line.new(active_session_start_bar, active_sma150_d, target_index, active_sma150_d, color=col_150, width=w_150, style=get_style(style_150))
+        lbl_sma150:= label.new(target_label_index, active_sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", active_sma150_d))
+    if show_200 and level_is_relevant_at(active_sma200_d, active_close, active_session_lod, active_session_hod)
+        l_sma200  := line.new(active_session_start_bar, active_sma200_d, target_index, active_sma200_d, color=col_200, width=w_200, style=get_style(style_200))
+        lbl_sma200:= label.new(target_label_index, active_sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", active_sma200_d))
 
     // EMAs — skip the EMA entirely if it's within ~0.3% of price of its sibling SMA
     // (10D EMA vs 10D SMA, 20D EMA vs 20D SMA). When MAs overlap that closely the
     // labels would just stack on top of each other, so showing one is enough.
-    ema_skip_gap = close * 0.003
-    if show_ema10 and level_is_relevant(ema10_d) and (not show_10 or math.abs(ema10_d - sma10_d) > ema_skip_gap)
-        l_ema10   := line.new(session_start_bar, ema10_d, target_index, ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
-        lbl_ema10 := label.new(target_label_index, ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", ema10_d))
-    if show_ema20 and level_is_relevant(ema20_d) and (not show_20 or math.abs(ema20_d - sma20_d) > ema_skip_gap)
-        l_ema20   := line.new(session_start_bar, ema20_d, target_index, ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
-        lbl_ema20 := label.new(target_label_index, ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", ema20_d))
-    if show_ema50 and level_is_relevant(ema50_d) and (not show_50 or math.abs(ema50_d - sma50_d) > ema_skip_gap)
-        l_ema50   := line.new(session_start_bar, ema50_d, target_index, ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
-        lbl_ema50 := label.new(target_label_index, ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", ema50_d))
+    ema_skip_gap = active_close * 0.003
+    if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod) and (not show_10 or math.abs(active_ema10_d - active_sma10_d) > ema_skip_gap)
+        l_ema10   := line.new(active_session_start_bar, active_ema10_d, target_index, active_ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
+        lbl_ema10 := label.new(target_label_index, active_ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", active_ema10_d))
+    if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod) and (not show_20 or math.abs(active_ema20_d - active_sma20_d) > ema_skip_gap)
+        l_ema20   := line.new(active_session_start_bar, active_ema20_d, target_index, active_ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
+        lbl_ema20 := label.new(target_label_index, active_ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", active_ema20_d))
+    if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod) and (not show_50 or math.abs(active_ema50_d - active_sma50_d) > ema_skip_gap)
+        l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
+        lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
 
-    if show_h and not na(prev_high) and level_is_relevant(prev_high)
-        l_high   := line.new(session_start_bar, prev_high, target_index, prev_high, color=col_h, width=w_h, style=get_style(style_h))
-        lbl_high := label.new(target_label_index, prev_high, get_text("PD High", prev_high), color=color.new(color.black, 100), textcolor=col_h, style=label.style_label_left, tooltip=get_text("PD High", prev_high))
-    if show_l and not na(prev_low) and level_is_relevant(prev_low)
-        l_low    := line.new(session_start_bar, prev_low, target_index, prev_low, color=col_l, width=w_l, style=get_style(style_l))
-        lbl_low  := label.new(target_label_index, prev_low, get_text("PD Low", prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", prev_low))
+    if show_h and not na(active_prev_high) and level_is_relevant_at(active_prev_high, active_close, active_session_lod, active_session_hod)
+        l_high   := line.new(active_session_start_bar, active_prev_high, target_index, active_prev_high, color=col_h, width=w_h, style=get_style(style_h))
+        lbl_high := label.new(target_label_index, active_prev_high, get_text("PD High", active_prev_high), color=color.new(color.black, 100), textcolor=col_h, style=label.style_label_left, tooltip=get_text("PD High", active_prev_high))
+    if show_l and not na(active_prev_low) and level_is_relevant_at(active_prev_low, active_close, active_session_lod, active_session_hod)
+        l_low    := line.new(active_session_start_bar, active_prev_low, target_index, active_prev_low, color=col_l, width=w_l, style=get_style(style_l))
+        lbl_low  := label.new(target_label_index, active_prev_low, get_text("PD Low", active_prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", active_prev_low))
 
-if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
+if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
     if show_5 and not na(l_sma5)
         line.set_x2(l_sma5, target_index)
         label.set_x(lbl_sma5, target_label_index)
@@ -510,25 +588,25 @@ if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
         line.set_x2(l_low, target_index)
         label.set_x(lbl_low, target_label_index)
 
-    if show_or5 and not na(or5_high) and level_is_relevant(or5_high)
+    if show_or5 and not na(active_or5_high) and level_is_relevant_at(active_or5_high, active_close, active_session_lod, active_session_hod)
         if na(l_or5h)
-            l_or5h   := line.new(session_start_bar, or5_high, target_index, or5_high, color=col_or5, width=w_or5, style=get_style(style_or5))
-            lbl_or5h := label.new(target_label_index, or5_high, "5m", color=color.new(color.black, 100), textcolor=col_or5, style=label.style_label_left, tooltip=get_text("5m OR High", or5_high))
+            l_or5h   := line.new(active_session_start_bar, active_or5_high, target_index, active_or5_high, color=col_or5, width=w_or5, style=get_style(style_or5))
+            lbl_or5h := label.new(target_label_index, active_or5_high, "5m", color=color.new(color.black, 100), textcolor=col_or5, style=label.style_label_left, tooltip=get_text("5m OR High", active_or5_high))
         else
-            line.set_xy1(l_or5h, session_start_bar, or5_high)
-            line.set_xy2(l_or5h, target_index, or5_high)
-            label.set_xy(lbl_or5h, target_label_index, or5_high)
+            line.set_xy1(l_or5h, active_session_start_bar, active_or5_high)
+            line.set_xy2(l_or5h, target_index, active_or5_high)
+            label.set_xy(lbl_or5h, target_label_index, active_or5_high)
             // keep label text in sync with the (possibly updated) OR high value
             label.set_text(lbl_or5h, "5m")
 
-    if show_or30 and not na(or30_high) and level_is_relevant(or30_high)
+    if show_or30 and not na(active_or30_high) and level_is_relevant_at(active_or30_high, active_close, active_session_lod, active_session_hod)
         if na(l_or30h)
-            l_or30h   := line.new(session_start_bar, or30_high, target_index, or30_high, color=col_or30, width=w_or30, style=get_style(style_or30))
-            lbl_or30h := label.new(target_label_index, or30_high, "30m", color=color.new(color.black, 100), textcolor=col_or30, style=label.style_label_left, tooltip=get_text("30m OR High", or30_high))
+            l_or30h   := line.new(active_session_start_bar, active_or30_high, target_index, active_or30_high, color=col_or30, width=w_or30, style=get_style(style_or30))
+            lbl_or30h := label.new(target_label_index, active_or30_high, "30m", color=color.new(color.black, 100), textcolor=col_or30, style=label.style_label_left, tooltip=get_text("30m OR High", active_or30_high))
         else
-            line.set_xy1(l_or30h, session_start_bar, or30_high)
-            line.set_xy2(l_or30h, target_index, or30_high)
-            label.set_xy(lbl_or30h, target_label_index, or30_high)
+            line.set_xy1(l_or30h, active_session_start_bar, active_or30_high)
+            line.set_xy2(l_or30h, target_index, active_or30_high)
+            label.set_xy(lbl_or30h, target_label_index, active_or30_high)
             // keep label text in sync with the (possibly updated) OR high value
             label.set_text(lbl_or30h, "30m")
 
@@ -536,15 +614,15 @@ if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
     // Keep each label at its real line price, then push only the x-position right
     // when nearby labels would collide.
     if is_data_anchor_bar
-        sma5_y   = sma5_d
-        sma10_y  = sma10_d
-        sma20_y  = sma20_d
-        sma50_y  = sma50_d
-        sma150_y = sma150_d
-        sma200_y = sma200_d
-        ema10_y  = ema10_d
-        ema20_y  = ema20_d
-        ema50_y  = ema50_d
+        sma5_y   = active_sma5_d
+        sma10_y  = active_sma10_d
+        sma20_y  = active_sma20_d
+        sma50_y  = active_sma50_d
+        sma150_y = active_sma150_d
+        sma200_y = active_sma200_d
+        ema10_y  = active_ema10_d
+        ema20_y  = active_ema20_d
+        ema50_y  = active_ema50_d
 
         if not na(lbl_sma5)
             label.set_y(lbl_sma5, sma5_y)
@@ -569,7 +647,7 @@ if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
             lns_arr    = array.new<line>()
             lbls_arr   = array.new<label>()
             prices_arr = array.new<float>()
-            add_lbl(lns_arr, lbls_arr, prices_arr, l_low,     lbl_low,     prev_low)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_low,     lbl_low,     active_prev_low)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma200,  lbl_sma200,  sma200_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma150,  lbl_sma150,  sma150_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma50,   lbl_sma50,   sma50_y)
@@ -579,13 +657,13 @@ if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma10,   lbl_sma10,   sma10_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_ema10,   lbl_ema10,   ema10_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma5,    lbl_sma5,    sma5_y)
-            add_lbl(lns_arr, lbls_arr, prices_arr, l_high,    lbl_high,    prev_high)
-            add_lbl(lns_arr, lbls_arr, prices_arr, l_or5h,    lbl_or5h,    or5_high)
-            add_lbl(lns_arr, lbls_arr, prices_arr, l_or30h,   lbl_or30h,   or30_high)
-            min_gap = close * (lbl_min_gap_pct / 100.0)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_high,    lbl_high,    active_prev_high)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_or5h,    lbl_or5h,    active_or5_high)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_or30h,   lbl_or30h,   active_or30_high)
+            min_gap = active_close * (lbl_min_gap_pct / 100.0)
             stagger_labels(lns_arr, lbls_arr, prices_arr, min_gap, target_label_index, lbl_step_bars, label_offset)
 
-            if not na(lbl_or5h) and not na(lbl_or30h) and not na(l_or5h) and not na(l_or30h) and not na(or5_high) and not na(or30_high) and math.abs(or5_high - or30_high) < min_gap
+            if not na(lbl_or5h) and not na(lbl_or30h) and not na(l_or5h) and not na(l_or30h) and not na(active_or5_high) and not na(active_or30_high) and math.abs(active_or5_high - active_or30_high) < min_gap
                 or5_x = target_label_index
                 or30_x = target_label_index + lbl_step_bars
                 label.set_x(lbl_or5h, or5_x)
@@ -608,17 +686,17 @@ var table top_tbl = table.new(position.top_right, 3, 4, bgcolor=color.new(color.
 var table bottom_tbl = table.new(position.bottom_right, 3, 3, bgcolor=color.new(color.black, 100))
 
 if is_data_anchor_bar and show_info_table
-    color_rvol = calc_rvol > 50.0 ? tbl_text_col : tbl_extended_col
-    color_lodd = calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col
-    color_gain = calc_gain_from_ma >= 0.0 ? tbl_text_col : tbl_extended_col
-    color_atr_mult = is_atr_extended ? tbl_extended_col : tbl_text_col
+    color_rvol = active_calc_rvol > 50.0 ? tbl_text_col : tbl_extended_col
+    color_lodd = active_calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col
+    color_gain = active_calc_gain_from_ma >= 0.0 ? tbl_text_col : tbl_extended_col
+    color_atr_mult = active_is_atr_extended ? tbl_extended_col : tbl_text_col
 
-    str_rvol = str.tostring(calc_rvol, "0") + "%"
-    str_lodd = str.tostring(calc_lodd, "0") + "%"
-    str_lodp = str.tostring(chart_lod, "#.##")
-    str_atr_mult = str.tostring(calc_atr_mult_from_ma, "0.00")
-    str_gain_ma = str.tostring(calc_gain_from_ma, "0.00") + "%"
-    str_atr_pct = str.tostring(calc_atr_pct, "0.00") + "%"
+    str_rvol = str.tostring(active_calc_rvol, "0") + "%"
+    str_lodd = str.tostring(active_calc_lodd, "0") + "%"
+    str_lodp = str.tostring(active_chart_lod, "#.##")
+    str_atr_mult = str.tostring(active_calc_atr_mult_from_ma, "0.00")
+    str_gain_ma = str.tostring(active_calc_gain_from_ma, "0.00") + "%"
+    str_atr_pct = str.tostring(active_calc_atr_pct, "0.00") + "%"
 
     // Empty padding column on the left.
     table.cell(top_tbl, 0, 0, " ", text_size=table_size_sel)
