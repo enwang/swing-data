@@ -51,14 +51,19 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertIn("l_sma150  := line.new(session_start_bar, sma150_d", source)
             self.assertIn("lbl_sma150:= label.new(target_label_index, sma150_d, get_name(\"150D SMA\")", source)
 
-    def test_visible_right_edge_replay_anchor(self):
-        for source in (read_desktop(), read_mobile()):
-            self.assertIn("use_visible_replay = input.bool(true, \"Use Rightmost Visible Bar As Current\"", source)
-            self.assertIn("is_right_visible_bar = time == chart.right_visible_bar_time", source)
-            self.assertIn("is_data_anchor_bar = use_visible_replay ? is_right_visible_bar : barstate.islast", source)
-            self.assertIn("should_create_levels = timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar", source)
-            self.assertIn("if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar", source)
-            self.assertIn("if is_data_anchor_bar and show_info_table", source)
+    def test_visible_right_edge_replay_anchor_is_desktop_only(self):
+        desktop = read_desktop()
+        mobile = read_mobile()
+
+        self.assertIn("use_visible_replay = input.bool(true, \"Use Rightmost Visible Bar As Current\"", desktop)
+        self.assertIn("is_right_visible_bar = time == chart.right_visible_bar_time", desktop)
+        self.assertIn("is_data_anchor_bar = use_visible_replay ? is_right_visible_bar : barstate.islast", desktop)
+        self.assertIn("should_create_levels = timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar", desktop)
+        self.assertIn("if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar", desktop)
+        self.assertIn("if is_data_anchor_bar and show_info_table", desktop)
+
+        self.assertNotIn("use_visible_replay", mobile)
+        self.assertNotIn("chart.right_visible_bar_time", mobile)
 
 
 if __name__ == "__main__":

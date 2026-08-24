@@ -14,7 +14,6 @@ offset    = input.int(3, "Line Extension (Bars Ahead)", minval=0, group=gp_visua
 label_offset = input.int(0, "Label Gap From Line End", minval=0, group=gp_visual, display=display.none)
 show_near_intraday_levels = input.bool(true, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
 near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
-use_visible_replay = input.bool(true, "Use Rightmost Visible Bar As Current", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values update from the rightmost visible bar as you scroll or zoom the chart.")
 
 gp_sma    = "Daily Moving Averages"
 show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
@@ -391,11 +390,9 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
         label.set_x(lb, new_x)
         last_price := p
 
-is_right_visible_bar = time == chart.right_visible_bar_time
-is_data_anchor_bar = use_visible_replay ? is_right_visible_bar : barstate.islast
 target_index = bar_index + offset
 target_label_index = target_index + label_offset
-should_create_levels = timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
+should_create_levels = timeframe.isintraday and not na(session_start_bar) and (is_new_day or barstate.islast)
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
@@ -466,7 +463,7 @@ if should_create_levels
         l_low    := line.new(session_start_bar, prev_low, target_index, prev_low, color=col_l, width=w_l, style=get_style(style_l))
         lbl_low  := label.new(target_label_index, prev_low, get_text("PD Low", prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", prev_low))
 
-if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
+if timeframe.isintraday and not na(session_start_bar)
     if show_5 and not na(l_sma5)
         line.set_x2(l_sma5, target_index)
         label.set_x(lbl_sma5, target_label_index)
@@ -523,10 +520,10 @@ if timeframe.isintraday and not na(session_start_bar) and is_data_anchor_bar
             // keep label text in sync with the (possibly updated) OR high value
             label.set_text(lbl_or30h, "30m")
 
-    // --- LABEL ALIGNMENT + ANTI-OVERLAP STAGGER (anchor bar only) ---
+    // --- LABEL ALIGNMENT + ANTI-OVERLAP STAGGER (last bar only) ---
     // Keep each label at its real line price, then push only the x-position right
     // when nearby labels would collide.
-    if is_data_anchor_bar
+    if barstate.islast
         sma5_y   = sma5_d
         sma10_y  = sma10_d
         sma20_y  = sma20_d
@@ -597,7 +594,7 @@ table_size_sel = switch tbl_size
 // against the pane edge (which was clipping the first digit of LoD Price).
 var table bottom_tbl = table.new(position.bottom_right, 3, 5, bgcolor=color.new(color.black, 100))
 
-if is_data_anchor_bar and show_info_table
+if barstate.islast and show_info_table
     color_rvol = calc_rvol > 50.0 ? tbl_text_col : tbl_extended_col
     color_lodd = calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col
     color_gain = calc_gain_from_ma >= 0.0 ? tbl_text_col : tbl_extended_col
