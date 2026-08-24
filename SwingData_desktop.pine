@@ -38,6 +38,11 @@ col_50    = color.rgb(102, 178, 255)
 w_50      = input.int(2, "Width", minval=1, maxval=5, group=gp_sma, display=display.none)
 style_50  = input.string("Solid", "Style", options=["Solid", "Dashed", "Dotted"], group=gp_sma, display=display.none)
 
+show_150  = input.bool(true,  "Show 150D SMA", group=gp_sma, display=display.none)
+col_150   = color.rgb(190, 150, 255)
+w_150     = input.int(2, "Width", minval=1, maxval=5, group=gp_sma, display=display.none)
+style_150 = input.string("Solid", "Style", options=["Solid", "Dashed", "Dotted"], group=gp_sma, display=display.none)
+
 show_200  = input.bool(true,  "Show 200D SMA",group=gp_sma, display=display.none)
 col_200   = input.color(color.purple, "",     group=gp_sma, display=display.none)
 w_200     = input.int(2, "Width", minval=1, maxval=5, group=gp_sma, display=display.none)
@@ -108,6 +113,7 @@ sma5_d    = request.security(syminfo.tickerid, "D", ta.sma(close, 5),   lookahea
 sma10_d   = request.security(syminfo.tickerid, "D", ta.sma(close, 10),  lookahead=barmerge.lookahead_on)
 sma20_d   = request.security(syminfo.tickerid, "D", ta.sma(close, 20),  lookahead=barmerge.lookahead_on)
 sma50_d   = request.security(syminfo.tickerid, "D", ta.sma(close, 50),  lookahead=barmerge.lookahead_on)
+sma150_d  = request.security(syminfo.tickerid, "D", ta.sma(close, 150), lookahead=barmerge.lookahead_on)
 sma200_d  = request.security(syminfo.tickerid, "D", ta.sma(close, 200), lookahead=barmerge.lookahead_on)
 ema10_d   = request.security(syminfo.tickerid, "D", ta.ema(close, 10),  lookahead=barmerge.lookahead_on)
 ema20_d   = request.security(syminfo.tickerid, "D", ta.ema(close, 20),  lookahead=barmerge.lookahead_on)
@@ -297,6 +303,7 @@ var line l_sma5   = na
 var line l_sma10  = na
 var line l_sma20  = na
 var line l_sma50  = na
+var line l_sma150 = na
 var line l_sma200 = na
 var line l_ema10  = na
 var line l_ema20  = na
@@ -310,6 +317,7 @@ var label lbl_sma5   = na
 var label lbl_sma10  = na
 var label lbl_sma20  = na
 var label lbl_sma50  = na
+var label lbl_sma150 = na
 var label lbl_sma200 = na
 var label lbl_ema10  = na
 var label lbl_ema20  = na
@@ -396,6 +404,8 @@ if should_create_levels
     label.delete(lbl_sma20)
     line.delete(l_sma50)
     label.delete(lbl_sma50)
+    line.delete(l_sma150)
+    label.delete(lbl_sma150)
     line.delete(l_sma200)
     label.delete(lbl_sma200)
     line.delete(l_ema10)
@@ -425,6 +435,9 @@ if should_create_levels
     if show_50 and level_is_relevant(sma50_d)
         l_sma50   := line.new(session_start_bar, sma50_d, target_index, sma50_d, color=col_50, width=w_50, style=get_style(style_50))
         lbl_sma50 := label.new(target_label_index, sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", sma50_d))
+    if show_150 and level_is_relevant(sma150_d)
+        l_sma150  := line.new(session_start_bar, sma150_d, target_index, sma150_d, color=col_150, width=w_150, style=get_style(style_150))
+        lbl_sma150:= label.new(target_label_index, sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", sma150_d))
     if show_200 and level_is_relevant(sma200_d)
         l_sma200  := line.new(session_start_bar, sma200_d, target_index, sma200_d, color=col_200, width=w_200, style=get_style(style_200))
         lbl_sma200:= label.new(target_label_index, sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", sma200_d))
@@ -463,6 +476,9 @@ if timeframe.isintraday and not na(session_start_bar)
     if show_50 and not na(l_sma50)
         line.set_x2(l_sma50, target_index)
         label.set_x(lbl_sma50, target_label_index)
+    if show_150 and not na(l_sma150)
+        line.set_x2(l_sma150, target_index)
+        label.set_x(lbl_sma150, target_label_index)
     if show_200 and not na(l_sma200)
         line.set_x2(l_sma200, target_index)
         label.set_x(lbl_sma200, target_label_index)
@@ -512,6 +528,7 @@ if timeframe.isintraday and not na(session_start_bar)
         sma10_y  = sma10_d
         sma20_y  = sma20_d
         sma50_y  = sma50_d
+        sma150_y = sma150_d
         sma200_y = sma200_d
         ema10_y  = ema10_d
         ema20_y  = ema20_d
@@ -525,6 +542,8 @@ if timeframe.isintraday and not na(session_start_bar)
             label.set_y(lbl_sma20, sma20_y)
         if not na(lbl_sma50)
             label.set_y(lbl_sma50, sma50_y)
+        if not na(lbl_sma150)
+            label.set_y(lbl_sma150, sma150_y)
         if not na(lbl_sma200)
             label.set_y(lbl_sma200, sma200_y)
         if not na(lbl_ema10)
@@ -540,6 +559,7 @@ if timeframe.isintraday and not na(session_start_bar)
             prices_arr = array.new<float>()
             add_lbl(lns_arr, lbls_arr, prices_arr, l_low,     lbl_low,     prev_low)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma200,  lbl_sma200,  sma200_y)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_sma150,  lbl_sma150,  sma150_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma50,   lbl_sma50,   sma50_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_ema50,   lbl_ema50,   ema50_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma20,   lbl_sma20,   sma20_y)

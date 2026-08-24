@@ -43,6 +43,14 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertNotIn("label.set_y(lbl_or5h", source)
             self.assertNotIn("label.set_y(lbl_or30h", source)
 
+    def test_150d_sma_is_enabled_in_both_versions(self):
+        for source in (read_desktop(), read_mobile()):
+            self.assertIn("show_150  = input.bool(true,  \"Show 150D SMA\"", source)
+            self.assertIn("col_150   = color.rgb(190, 150, 255)", source)
+            self.assertIn("sma150_d  = request.security(syminfo.tickerid, \"D\", ta.sma(close, 150)", source)
+            self.assertIn("l_sma150  := line.new(session_start_bar, sma150_d", source)
+            self.assertIn("lbl_sma150:= label.new(target_label_index, sma150_d, get_name(\"150D SMA\")", source)
+
 
 if __name__ == "__main__":
     unittest.main()
