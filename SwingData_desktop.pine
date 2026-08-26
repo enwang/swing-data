@@ -160,9 +160,11 @@ var float running_today_high = na
 var float running_today_low  = na
 var float prev_high          = na
 var float prev_low           = na
+var float ppd_low            = na
 
 if is_new_day
     prev_high := running_today_high
+    ppd_low   := prev_low
     prev_low  := running_today_low
 
     running_today_high := high
@@ -313,6 +315,7 @@ var line l_ema20  = na
 var line l_ema50  = na
 var line l_high   = na
 var line l_low    = na
+var line l_ppd_low = na
 var line l_or5h   = na
 var line l_or30h  = na
 
@@ -327,6 +330,7 @@ var label lbl_ema20  = na
 var label lbl_ema50  = na
 var label lbl_high   = na
 var label lbl_low    = na
+var label lbl_ppd_low = na
 var label lbl_or5h   = na
 var label lbl_or30h  = na
 
@@ -417,6 +421,7 @@ var float anchor_ema20_d = na
 var float anchor_ema50_d = na
 var float anchor_prev_high = na
 var float anchor_prev_low = na
+var float anchor_ppd_low = na
 var float anchor_or5_high = na
 var float anchor_or30_high = na
 var float anchor_calc_rvol = na
@@ -444,6 +449,7 @@ var float latest_ema20_d = na
 var float latest_ema50_d = na
 var float latest_prev_high = na
 var float latest_prev_low = na
+var float latest_ppd_low = na
 var float latest_or5_high = na
 var float latest_or30_high = na
 var float latest_calc_rvol = na
@@ -475,6 +481,7 @@ if is_visible_rth_day_bar
     latest_ema50_d := ema50_d
     latest_prev_high := prev_high
     latest_prev_low := prev_low
+    latest_ppd_low := ppd_low
     latest_or5_high := or5_high
     latest_or30_high := or30_high
     latest_calc_rvol := calc_rvol
@@ -503,6 +510,7 @@ if is_complete_visible_rth_day
     anchor_ema50_d := ema50_d
     anchor_prev_high := prev_high
     anchor_prev_low := prev_low
+    anchor_ppd_low := ppd_low
     anchor_or5_high := or5_high
     anchor_or30_high := or30_high
     anchor_calc_rvol := calc_rvol
@@ -531,6 +539,7 @@ active_ema20_d = use_latest_visible_rth_day ? latest_ema20_d : use_complete_visi
 active_ema50_d = use_latest_visible_rth_day ? latest_ema50_d : use_complete_visible_rth_day ? anchor_ema50_d : ema50_d
 active_prev_high = use_latest_visible_rth_day ? latest_prev_high : use_complete_visible_rth_day ? anchor_prev_high : prev_high
 active_prev_low = use_latest_visible_rth_day ? latest_prev_low : use_complete_visible_rth_day ? anchor_prev_low : prev_low
+active_ppd_low = use_latest_visible_rth_day ? latest_ppd_low : use_complete_visible_rth_day ? anchor_ppd_low : ppd_low
 active_or5_high = use_latest_visible_rth_day ? latest_or5_high : use_complete_visible_rth_day ? anchor_or5_high : or5_high
 active_or30_high = use_latest_visible_rth_day ? latest_or30_high : use_complete_visible_rth_day ? anchor_or30_high : or30_high
 active_calc_rvol = use_latest_visible_rth_day ? latest_calc_rvol : use_complete_visible_rth_day ? anchor_calc_rvol : calc_rvol
@@ -540,6 +549,7 @@ active_calc_atr_pct = use_latest_visible_rth_day ? latest_calc_atr_pct : use_com
 active_calc_gain_from_ma = use_latest_visible_rth_day ? latest_calc_gain_from_ma : use_complete_visible_rth_day ? anchor_calc_gain_from_ma : calc_gain_from_ma
 active_calc_atr_mult_from_ma = use_latest_visible_rth_day ? latest_calc_atr_mult_from_ma : use_complete_visible_rth_day ? anchor_calc_atr_mult_from_ma : calc_atr_mult_from_ma
 active_is_atr_extended = use_latest_visible_rth_day ? latest_is_atr_extended : use_complete_visible_rth_day ? anchor_is_atr_extended : is_atr_extended
+show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.01
 target_index = active_bar_index + offset
 target_label_index = target_index + label_offset
 should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
@@ -568,6 +578,8 @@ if should_create_levels
     label.delete(lbl_high)
     line.delete(l_low)
     label.delete(lbl_low)
+    line.delete(l_ppd_low)
+    label.delete(lbl_ppd_low)
     line.delete(l_or5h)
     label.delete(lbl_or5h)
     line.delete(l_or30h)
@@ -612,6 +624,9 @@ if should_create_levels
     if show_l and not na(active_prev_low) and level_is_relevant_at(active_prev_low, active_close, active_session_lod, active_session_hod)
         l_low    := line.new(active_session_start_bar, active_prev_low, target_index, active_prev_low, color=col_l, width=w_l, style=get_style(style_l))
         lbl_low  := label.new(target_label_index, active_prev_low, get_text("PD Low", active_prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", active_prev_low))
+    if show_ppd_low_line and level_is_relevant_at(active_ppd_low, active_close, active_session_lod, active_session_hod)
+        l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low, color=col_l, width=w_l, style=get_style(style_l))
+        lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text("PPD Low", active_ppd_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PPD Low", active_ppd_low))
 
 if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
     if show_5 and not na(l_sma5)
@@ -647,6 +662,9 @@ if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_
     if show_l and not na(l_low)
         line.set_x2(l_low, target_index)
         label.set_x(lbl_low, target_label_index)
+    if show_ppd_low_line and not na(l_ppd_low)
+        line.set_x2(l_ppd_low, target_index)
+        label.set_x(lbl_ppd_low, target_label_index)
 
     if show_or5 and not na(active_or5_high) and level_is_relevant_at(active_or5_high, active_close, active_session_lod, active_session_hod)
         if na(l_or5h)
@@ -708,6 +726,7 @@ if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_
             lbls_arr   = array.new<label>()
             prices_arr = array.new<float>()
             add_lbl(lns_arr, lbls_arr, prices_arr, l_low,     lbl_low,     active_prev_low)
+            add_lbl(lns_arr, lbls_arr, prices_arr, l_ppd_low, lbl_ppd_low, active_ppd_low)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma200,  lbl_sma200,  sma200_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma150,  lbl_sma150,  sma150_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma50,   lbl_sma50,   sma50_y)

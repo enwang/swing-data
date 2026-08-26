@@ -87,6 +87,20 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertNotIn("use_visible_replay", mobile)
         self.assertNotIn("chart.right_visible_bar_time", mobile)
 
+    def test_ppd_low_line_is_desktop_only(self):
+        desktop = read_desktop()
+        mobile = read_mobile()
+
+        self.assertIn("var float ppd_low", desktop)
+        self.assertIn("ppd_low   := prev_low", desktop)
+        self.assertIn("active_ppd_low = use_latest_visible_rth_day ? latest_ppd_low : use_complete_visible_rth_day ? anchor_ppd_low : ppd_low", desktop)
+        self.assertIn("show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.01", desktop)
+        self.assertIn("l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low", desktop)
+        self.assertIn("lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text(\"PPD Low\", active_ppd_low)", desktop)
+        self.assertIn("add_lbl(lns_arr, lbls_arr, prices_arr, l_ppd_low, lbl_ppd_low, active_ppd_low)", desktop)
+
+        self.assertNotIn("PPD Low", mobile)
+
 
 if __name__ == "__main__":
     unittest.main()
