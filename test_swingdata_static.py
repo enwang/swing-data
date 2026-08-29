@@ -15,6 +15,14 @@ def read_mobile() -> str:
     return MOBILE.read_text()
 
 
+def assignment(source: str, name: str) -> str:
+    for line in source.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(name) and "=" in stripped:
+            return stripped
+    raise AssertionError(f"missing assignment for {name}")
+
+
 class SwingDataStaticTests(unittest.TestCase):
     def test_no_vertical_label_price_offset(self):
         source = read_desktop() + "\n" + read_mobile()
@@ -74,6 +82,7 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("is_complete_visible_rth_day = timeframe.isintraday and is_rth_close_bar", desktop)
         self.assertIn("is_visible_rth_day_bar = timeframe.isintraday and is_rth_bar", desktop)
         self.assertIn("session_start_time >= chart.left_visible_bar_time", desktop)
+        self.assertIn("time >= chart.left_visible_bar_time", desktop)
         self.assertIn("use_latest_visible_rth_day = use_visible_replay and timeframe.isintraday and found_visible_rth_day", desktop)
         self.assertIn("latest_session_start_time > anchor_session_start_time", desktop)
         self.assertIn("use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and found_complete_visible_rth_day and not use_latest_visible_rth_day", desktop)
@@ -108,12 +117,13 @@ class SwingDataStaticTests(unittest.TestCase):
             desktop.index("l_sma10   := line.new(active_session_start_bar, active_sma10_d"),
         )
 
-    def test_desktop_skips_lower_tf_scan_below_30m(self):
+    def test_desktop_preserves_lod_lower_tf_scan_from_5m(self):
         desktop = read_desktop()
 
-        self.assertIn("use_lower_tf_scan = not timeframe.isintraday or timeframe.multiplier >= 30", desktop)
-        self.assertIn("array<float> lower_highs = use_lower_tf_scan ? request.security_lower_tf", desktop)
-        self.assertIn("if timeframe.isintraday and timeframe.multiplier >= 30 and is_rth_bar and array.size(lower_highs) > 0", desktop)
+        self.assertIn('lower_tf = timeframe.isintraday and timeframe.multiplier >= 30 ? "1" : timeframe.isintraday ? str.tostring(timeframe.multiplier) : "1"', desktop)
+        self.assertIn("lower_lows   = request.security_lower_tf(syminfo.tickerid, lower_tf, low)", desktop)
+        self.assertIn("if timeframe.isintraday and timeframe.multiplier >= 5 and is_rth_bar and array.size(lower_highs) > 0", desktop)
+        self.assertIn("session_lod := na(session_lod) ? bar_low  : math.min(session_lod, bar_low)", desktop)
 
     def test_desktop_daily_ma_security_requests_are_batched(self):
         desktop = read_desktop()
@@ -121,22 +131,21 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d, atr_ma_d] = request.security", desktop)
         self.assertEqual(desktop.count("request.security(syminfo.tickerid, \"D\""), 2)
 
-    def test_desktop_request_history_is_limited(self):
+    def test_desktop_core_data_requests_are_not_history_limited(self):
         desktop = read_desktop()
 
-        self.assertIn("daily_calc_bars = 260", desktop)
-        self.assertIn("lower_tf_calc_bars = 600", desktop)
-        self.assertIn("calc_bars_count=daily_calc_bars", desktop)
-        self.assertIn("calc_bars_count=lower_tf_calc_bars", desktop)
+        self.assertNotIn("daily_calc_bars", desktop)
+        self.assertNotIn("lower_tf_calc_bars", desktop)
+        self.assertNotIn("calc_bars_count=", desktop)
 
-    def test_desktop_fast_load_mode_skips_intraday_rvol_history(self):
+    def test_desktop_intraday_rvol_uses_same_time_history(self):
         desktop = read_desktop()
 
-        self.assertIn("fast_load_mode = input.bool(true, \"Fast Load Mode\"", desktop)
-        self.assertIn("rvol_slot_count = fast_load_mode ? 1 : rvol_session_minutes * (rvol_intraday_days + 1)", desktop)
-        self.assertIn("if not fast_load_mode and is_new_day", desktop)
-        self.assertIn("if not fast_load_mode and timeframe.isintraday and is_rth_bar", desktop)
-        self.assertIn("calc_rvol = timeframe.isintraday and not fast_load_mode ? last_intraday_rvol * 100 : daily_rvol", desktop)
+        self.assertNotIn("fast_load_mode", desktop)
+        self.assertIn("rvol_slot_count = rvol_session_minutes * (rvol_intraday_days + 1)", desktop)
+        self.assertIn("if is_new_day", desktop)
+        self.assertIn("if timeframe.isintraday and is_rth_bar", desktop)
+        self.assertIn("calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol", desktop)
 
     def test_desktop_line_length_is_capped_to_rth_bars(self):
         desktop = read_desktop()
@@ -146,6 +155,68 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("active_rth_end_bar = use_latest_visible_rth_day ? latest_bar_index : use_complete_visible_rth_day ? anchor_bar_index : session_last_rth_bar", desktop)
         self.assertIn("target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index", desktop)
         self.assertIn("target_index = target_base_index + offset", desktop)
+
+    def test_desktop_intraday_lod_display_uses_live_session_lod(self):
+        desktop = read_desktop()
+
+        self.assertIn("var bool session_lod_ready = false", desktop)
+        self.assertIn("if is_new_exchange_day and not is_rth_bar", desktop)
+        self.assertIn("session_lod_ready := false", desktop)
+        self.assertIn("session_hod := high", desktop)
+        self.assertIn("session_lod := low", desktop)
+        self.assertIn("session_lod_ready := true", desktop)
+        self.assertIn("chart_lod     = timeframe.isintraday ? session_lod : na(daily_rth_low) ? low : daily_rth_low", desktop)
+        self.assertIn("lodd_close = timeframe.isintraday ? close : chart_close", desktop)
+        self.assertIn("calc_lodd = (chart_atr > 0)    ? ((lodd_close - chart_lod) / chart_atr) * 100 : na", desktop)
+        self.assertIn("display_chart_lod = timeframe.isintraday ? chart_lod : na(active_chart_lod) ? low : active_chart_lod", desktop)
+        self.assertIn("display_calc_lodd = timeframe.isintraday ? calc_lodd : chart_atr > 0 ? ((chart_close - display_chart_lod) / chart_atr) * 100 : na", desktop)
+        self.assertIn("has_lod = (not timeframe.isintraday or (barstate.islast and session_lod_ready)) and not na(display_chart_lod) and not na(display_calc_lodd)", desktop)
+        self.assertIn("color_lodd = has_lod and display_calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col", desktop)
+        self.assertIn('str_lodd = has_lod ? str.tostring(display_calc_lodd, "0") + "%" : ""', desktop)
+        self.assertIn('str_lodp = has_lod ? str.tostring(display_chart_lod, "#.##") : ""', desktop)
+
+    def test_desktop_lod_has_no_stale_intraday_fallbacks(self):
+        desktop = read_desktop()
+
+        self.assertNotIn("confirmed_session_lod", desktop)
+        self.assertNotIn("confirmed_daily_rth_low", desktop)
+        chart_lod = assignment(desktop, "chart_lod")
+        lodd_close = assignment(desktop, "lodd_close")
+        calc_lodd = assignment(desktop, "calc_lodd")
+        display_chart_lod = assignment(desktop, "display_chart_lod")
+        display_calc_lodd = assignment(desktop, "display_calc_lodd")
+        has_lod = assignment(desktop, "has_lod")
+
+        self.assertIn("timeframe.isintraday ? session_lod", chart_lod)
+        self.assertIn("na(daily_rth_low) ? low : daily_rth_low", chart_lod)
+        self.assertNotIn("[1]", chart_lod)
+
+        self.assertIn("timeframe.isintraday ? close : chart_close", lodd_close)
+        self.assertNotIn("? d_close", lodd_close)
+        self.assertNotIn("- d_close", lodd_close)
+        self.assertNotIn("active_", lodd_close)
+        self.assertNotIn("[1]", lodd_close)
+
+        self.assertIn("lodd_close - chart_lod", calc_lodd)
+        self.assertNotIn("chart_close - chart_lod", calc_lodd)
+        self.assertNotIn("? d_close", calc_lodd)
+        self.assertNotIn("- d_close", calc_lodd)
+        self.assertNotIn("active_", calc_lodd)
+        self.assertNotIn("[1]", calc_lodd)
+
+        intraday_display_branch = display_chart_lod.split(":", 1)[0]
+        self.assertIn("timeframe.isintraday ? chart_lod", intraday_display_branch)
+        self.assertNotIn("active_", intraday_display_branch)
+        self.assertNotIn("[1]", display_chart_lod)
+
+        intraday_lodd_branch = display_calc_lodd.split(":", 1)[0]
+        self.assertIn("timeframe.isintraday ? calc_lodd", intraday_lodd_branch)
+        self.assertNotIn("active_", intraday_lodd_branch)
+        self.assertNotIn("[1]", display_calc_lodd)
+
+        self.assertIn("session_lod_ready", has_lod)
+        self.assertIn("barstate.islast", has_lod)
+        self.assertNotIn("active_", has_lod)
 
 
 if __name__ == "__main__":
