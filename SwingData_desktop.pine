@@ -538,7 +538,7 @@ if is_complete_visible_rth_day
     anchor_calc_gain_from_ma := calc_gain_from_ma
     anchor_calc_atr_mult_from_ma := calc_atr_mult_from_ma
     anchor_is_atr_extended := is_atr_extended
-use_latest_visible_rth_day = use_visible_replay and timeframe.isintraday and found_visible_rth_day and (not found_complete_visible_rth_day or latest_session_start_time > anchor_session_start_time)
+use_latest_visible_rth_day = use_visible_replay and timeframe.isintraday and barstate.islast and is_rth_bar and found_visible_rth_day
 use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and found_complete_visible_rth_day and not use_latest_visible_rth_day
 is_data_anchor_bar = use_visible_replay ? (timeframe.isintraday ? is_right_visible_bar : is_right_visible_bar) : barstate.islast
 active_session_start_bar = use_latest_visible_rth_day ? latest_session_start_bar : use_complete_visible_rth_day ? anchor_session_start_bar : session_start_bar
@@ -573,14 +573,15 @@ target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active
 target_index = target_base_index + offset
 target_label_index = target_index + label_offset
 should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
-should_draw_today_divider = show_today_divider and timeframe.isintraday and not found_visible_eth_bar and not na(active_session_start_bar) and is_data_anchor_bar
+divider_session_start_bar = use_latest_visible_rth_day ? active_session_start_bar : anchor_session_start_bar
+should_draw_today_divider = show_today_divider and timeframe.isintraday and (use_latest_visible_rth_day or found_complete_visible_rth_day) and not found_visible_eth_bar and not na(divider_session_start_bar) and is_data_anchor_bar
 
 if should_draw_today_divider
     if na(l_today_divider)
-        l_today_divider := line.new(active_session_start_bar, low, active_session_start_bar, high, color=color.new(today_divider_col, 35), width=1, style=line.style_dashed, extend=extend.both)
+        l_today_divider := line.new(divider_session_start_bar, low, divider_session_start_bar, high, color=color.new(today_divider_col, 35), width=1, style=line.style_dashed, extend=extend.both)
     else
-        line.set_xy1(l_today_divider, active_session_start_bar, low)
-        line.set_xy2(l_today_divider, active_session_start_bar, high)
+        line.set_xy1(l_today_divider, divider_session_start_bar, low)
+        line.set_xy2(l_today_divider, divider_session_start_bar, high)
         line.set_color(l_today_divider, color.new(today_divider_col, 35))
 else if (not show_today_divider or not timeframe.isintraday) and not na(l_today_divider)
     line.delete(l_today_divider)
