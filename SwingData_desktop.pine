@@ -15,6 +15,8 @@ label_offset = input.int(1, "Label Gap From Line End", minval=0, group=gp_visual
 show_near_intraday_levels = input.bool(true, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
 near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
 use_visible_replay = input.bool(true, "Use Last Complete Visible RTH Day", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values use the latest full regular-session day visible on screen. A partially visible next day is ignored.")
+show_today_divider = input.bool(true, "Show Today Divider", group=gp_visual, display=display.none, tooltip="On intraday charts, draw a vertical marker at the active regular-session start so it is easy to see where today begins.")
+today_divider_col = input.color(color.gray, "Today Divider Color", group=gp_visual, display=display.none)
 
 gp_sma    = "Daily Moving Averages"
 show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
@@ -90,7 +92,8 @@ style_or30 = input.string("Dotted", "Style", options=["Solid", "Dashed", "Dotted
 
 gp_lbl       = "Label Anti-Overlap"
 lbl_min_gap_pct = input.float(0.6, "Min Label Gap (% of price)", minval=0.0, step=0.1, group=gp_lbl, display=display.none, tooltip="When two labels are vertically closer than this %, the second one is pushed further right (and its line extended) so they don't overlap. Increase if labels still overlap; set to 0 to disable.")
-lbl_step_bars   = input.int(12, "Label Stagger (bars)", minval=1, group=gp_lbl, display=display.none, tooltip="How many bars to the right each colliding label gets pushed. Increase if labels still overlap horizontally.")
+lbl_step_bars   = input.int(3, "Label Stagger (bars)", minval=1, group=gp_lbl, display=display.none, tooltip="How many bars to the right each colliding label gets pushed. Keep small so labels stay close to their lines.")
+lbl_max_slots   = input.int(2, "Max Label Stagger Slots", minval=1, maxval=4, group=gp_lbl, display=display.none, tooltip="Caps chained label staggering so labels do not drift far to the right.")
 
 gp_tbl    = "Data Dashboard Layout"
 tbl_size  = input.string('Small', "Size", options=['Tiny', 'Small', 'Normal', 'Large'], group=gp_tbl, display=display.none)
@@ -327,6 +330,7 @@ var line l_low    = na
 var line l_ppd_low = na
 var line l_or5h   = na
 var line l_or30h  = na
+var line l_today_divider = na
 
 var label lbl_sma5   = na
 var label lbl_sma10  = na
@@ -377,7 +381,7 @@ add_lbl(array<line> lns, array<label> lbls, array<float> prices, line ln, label 
         array.push(lbls, lbl)
         array.push(prices, price)
 
-stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float min_gap, int base_x, int step_bars, int line_gap) =>
+stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float min_gap, int base_x, int step_bars, int max_slots, int line_gap) =>
     n = array.size(prices)
     // bubble sort all three arrays together by price ascending
     if n > 1
@@ -403,7 +407,7 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
         if na(last_price) or (p - last_price) >= min_gap
             slot := 0
         else
-            slot := slot + 1
+            slot := math.min(slot + 1, max_slots)
         new_x = base_x + slot * step_bars
         line.set_x2(ln, new_x - line_gap)
         label.set_x(lb, new_x)
@@ -412,7 +416,9 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
 is_right_visible_bar = time == chart.right_visible_bar_time
 is_complete_visible_rth_day = timeframe.isintraday and is_rth_close_bar and not na(session_start_time) and session_start_time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
 is_visible_rth_day_bar = timeframe.isintraday and is_rth_bar and not na(session_start_time) and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+is_visible_eth_bar = timeframe.isintraday and not is_rth_bar and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
 var bool found_complete_visible_rth_day = false
+var bool found_visible_eth_bar = false
 var int anchor_session_start_bar = na
 var int anchor_bar_index = na
 var int anchor_session_start_time = na
@@ -471,6 +477,9 @@ var bool latest_is_atr_extended = false
 if barstate.isfirst
     found_complete_visible_rth_day := false
     found_visible_rth_day := false
+    found_visible_eth_bar := false
+if is_visible_eth_bar
+    found_visible_eth_bar := true
 if is_visible_rth_day_bar
     found_visible_rth_day := true
     latest_session_start_bar := session_start_bar
@@ -564,6 +573,18 @@ target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active
 target_index = target_base_index + offset
 target_label_index = target_index + label_offset
 should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
+should_draw_today_divider = show_today_divider and timeframe.isintraday and not found_visible_eth_bar and not na(active_session_start_bar) and is_data_anchor_bar
+
+if should_draw_today_divider
+    if na(l_today_divider)
+        l_today_divider := line.new(active_session_start_bar, low, active_session_start_bar, high, color=color.new(today_divider_col, 35), width=1, style=line.style_dashed, extend=extend.both)
+    else
+        line.set_xy1(l_today_divider, active_session_start_bar, low)
+        line.set_xy2(l_today_divider, active_session_start_bar, high)
+        line.set_color(l_today_divider, color.new(today_divider_col, 35))
+else if (not show_today_divider or not timeframe.isintraday) and not na(l_today_divider)
+    line.delete(l_today_divider)
+    l_today_divider := na
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
@@ -751,7 +772,7 @@ if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_
             add_lbl(lns_arr, lbls_arr, prices_arr, l_or5h,    lbl_or5h,    active_or5_high)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_or30h,   lbl_or30h,   active_or30_high)
             min_gap = active_close * (lbl_min_gap_pct / 100.0)
-            stagger_labels(lns_arr, lbls_arr, prices_arr, min_gap, target_label_index, lbl_step_bars, label_offset)
+            stagger_labels(lns_arr, lbls_arr, prices_arr, min_gap, target_label_index, lbl_step_bars, lbl_max_slots, label_offset)
 
             if not na(lbl_or5h) and not na(lbl_or30h) and not na(l_or5h) and not na(l_or30h) and not na(active_or5_high) and not na(active_or30_high) and math.abs(active_or5_high - active_or30_high) < min_gap
                 or5_x = target_label_index

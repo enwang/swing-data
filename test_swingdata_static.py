@@ -62,6 +62,15 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertNotIn("label.set_y(lbl_or5h", source)
             self.assertNotIn("label.set_y(lbl_or30h", source)
 
+    def test_desktop_label_stagger_stays_near_lines(self):
+        desktop = read_desktop()
+
+        self.assertIn('lbl_step_bars   = input.int(3, "Label Stagger (bars)"', desktop)
+        self.assertIn('lbl_max_slots   = input.int(2, "Max Label Stagger Slots"', desktop)
+        self.assertIn("stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float min_gap, int base_x, int step_bars, int max_slots, int line_gap)", desktop)
+        self.assertIn("slot := math.min(slot + 1, max_slots)", desktop)
+        self.assertIn("stagger_labels(lns_arr, lbls_arr, prices_arr, min_gap, target_label_index, lbl_step_bars, lbl_max_slots, label_offset)", desktop)
+
     def test_150d_sma_is_enabled_in_both_versions(self):
         for source in (read_desktop(), read_mobile()):
             self.assertIn("show_150  = input.bool(true,  \"Show 150D SMA\"", source)
@@ -155,6 +164,24 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("active_rth_end_bar = use_latest_visible_rth_day ? latest_bar_index : use_complete_visible_rth_day ? anchor_bar_index : session_last_rth_bar", desktop)
         self.assertIn("target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index", desktop)
         self.assertIn("target_index = target_base_index + offset", desktop)
+
+    def test_desktop_intraday_today_divider_marks_rth_start(self):
+        desktop = read_desktop()
+
+        self.assertIn('show_today_divider = input.bool(true, "Show Today Divider"', desktop)
+        self.assertIn("today_divider_col = input.color(color.gray, \"Today Divider Color\"", desktop)
+        self.assertIn("var line l_today_divider = na", desktop)
+        self.assertIn("is_visible_eth_bar = timeframe.isintraday and not is_rth_bar and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time", desktop)
+        self.assertIn("var bool found_visible_eth_bar = false", desktop)
+        self.assertIn("found_visible_eth_bar := false", desktop)
+        self.assertIn("if is_visible_eth_bar", desktop)
+        self.assertIn("found_visible_eth_bar := true", desktop)
+        self.assertIn("should_draw_today_divider = show_today_divider and timeframe.isintraday and not found_visible_eth_bar and not na(active_session_start_bar) and is_data_anchor_bar", desktop)
+        self.assertIn("l_today_divider := line.new(active_session_start_bar, low, active_session_start_bar, high", desktop)
+        self.assertIn("style=line.style_dashed, extend=extend.both", desktop)
+        self.assertIn("line.set_xy1(l_today_divider, active_session_start_bar, low)", desktop)
+        self.assertIn("line.set_xy2(l_today_divider, active_session_start_bar, high)", desktop)
+        self.assertIn("else if (not show_today_divider or not timeframe.isintraday) and not na(l_today_divider)", desktop)
 
     def test_desktop_intraday_lod_display_uses_live_session_lod(self):
         desktop = read_desktop()
