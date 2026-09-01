@@ -1,0 +1,16 @@
+//@version=6
+indicator("Intraday Divider", overlay=true)
+plot(na, title="Compiler Anchor", display=display.none, editable=false)
+
+gp_visual = "Visual Layout Settings"
+show_today_divider = input.bool(true, "Show RTH Start Divider", group=gp_visual, display=display.none)
+today_divider_col = input.color(color.gray, "Divider Color", group=gp_visual, display=display.none)
+divider_alpha = input.int(82, "Divider Transparency", minval=0, maxval=100, group=gp_visual, display=display.none)
+
+is_rth_bar = not na(time(timeframe.period, "0930-1600", "America/New_York"))
+is_rth_bar_prev = not na(time(timeframe.period, "0930-1600", "America/New_York")[1])
+is_new_exchange_day = timeframe.isintraday and ta.change(time("D")) != 0
+is_rth_start_bar = timeframe.isintraday and is_rth_bar and (not is_rth_bar_prev or is_new_exchange_day)
+is_rth_only_start_bar = is_rth_start_bar and (is_rth_bar_prev or is_new_exchange_day)
+
+bgcolor(show_today_divider and is_rth_only_start_bar ? color.new(today_divider_col, divider_alpha) : na, title="RTH Start Divider", editable=false)

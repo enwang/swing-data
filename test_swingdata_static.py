@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 DESKTOP = ROOT / "SwingData_desktop.pine"
 MOBILE = ROOT / "SwingData_mobile.pine"
+INTRADAY_DIVIDER = ROOT / "intraday_divider.pine"
 
 
 def read_desktop() -> str:
@@ -13,6 +14,10 @@ def read_desktop() -> str:
 
 def read_mobile() -> str:
     return MOBILE.read_text()
+
+
+def read_intraday_divider() -> str:
+    return INTRADAY_DIVIDER.read_text()
 
 
 def assignment(source: str, name: str) -> str:
@@ -112,7 +117,7 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("var float ppd_low", desktop)
         self.assertIn("ppd_low   := prev_low", desktop)
         self.assertIn("active_ppd_low = use_latest_visible_rth_day ? latest_ppd_low : use_complete_visible_rth_day ? anchor_ppd_low : ppd_low", desktop)
-        self.assertIn("show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.01", desktop)
+        self.assertIn("show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.03", desktop)
         self.assertIn("l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low", desktop)
         self.assertIn("lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text(\"PPD Low\", active_ppd_low)", desktop)
         self.assertIn("add_lbl(lns_arr, lbls_arr, prices_arr, l_ppd_low, lbl_ppd_low, active_ppd_low)", desktop)
@@ -165,24 +170,31 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index", desktop)
         self.assertIn("target_index = target_base_index + offset", desktop)
 
-    def test_desktop_intraday_today_divider_marks_rth_start(self):
+    def test_desktop_has_no_today_divider_logic(self):
         desktop = read_desktop()
 
-        self.assertIn('show_today_divider = input.bool(true, "Show Today Divider"', desktop)
-        self.assertIn("today_divider_col = input.color(color.gray, \"Today Divider Color\"", desktop)
-        self.assertIn("var line l_today_divider = na", desktop)
-        self.assertIn("is_visible_eth_bar = timeframe.isintraday and not is_rth_bar and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time", desktop)
-        self.assertIn("var bool found_visible_eth_bar = false", desktop)
-        self.assertIn("found_visible_eth_bar := false", desktop)
-        self.assertIn("if is_visible_eth_bar", desktop)
-        self.assertIn("found_visible_eth_bar := true", desktop)
-        self.assertIn("divider_session_start_bar = use_latest_visible_rth_day ? active_session_start_bar : anchor_session_start_bar", desktop)
-        self.assertIn("should_draw_today_divider = show_today_divider and timeframe.isintraday and (use_latest_visible_rth_day or found_complete_visible_rth_day) and not found_visible_eth_bar and not na(divider_session_start_bar) and is_data_anchor_bar", desktop)
-        self.assertIn("l_today_divider := line.new(divider_session_start_bar, low, divider_session_start_bar, high", desktop)
-        self.assertIn("style=line.style_dashed, extend=extend.both", desktop)
-        self.assertIn("line.set_xy1(l_today_divider, divider_session_start_bar, low)", desktop)
-        self.assertIn("line.set_xy2(l_today_divider, divider_session_start_bar, high)", desktop)
-        self.assertIn("else if (not show_today_divider or not timeframe.isintraday) and not na(l_today_divider)", desktop)
+        self.assertNotIn("show_today_divider", desktop)
+        self.assertNotIn("today_divider_col", desktop)
+        self.assertNotIn("l_today_divider", desktop)
+        self.assertNotIn("fast_should_draw_today_divider", desktop)
+        self.assertNotIn("fast_divider_session_start_bar", desktop)
+        self.assertNotIn("fast_found_visible_eth_bar", desktop)
+
+    def test_standalone_intraday_divider_is_lightweight(self):
+        divider = read_intraday_divider()
+
+        self.assertIn('indicator("Intraday Divider", overlay=true)', divider)
+        self.assertIn('show_today_divider = input.bool(true, "Show RTH Start Divider"', divider)
+        self.assertIn("is_rth_start_bar = timeframe.isintraday and is_rth_bar and (not is_rth_bar_prev or is_new_exchange_day)", divider)
+        self.assertIn("is_rth_only_start_bar = is_rth_start_bar and (is_rth_bar_prev or is_new_exchange_day)", divider)
+        self.assertIn('bgcolor(show_today_divider and is_rth_only_start_bar ? color.new(today_divider_col, divider_alpha) : na, title="RTH Start Divider", editable=false)', divider)
+        self.assertNotIn("request.security", divider)
+        self.assertNotIn("request.security_lower_tf", divider)
+        self.assertNotIn("ta.sma", divider)
+        self.assertNotIn("ta.ema", divider)
+        self.assertNotIn("line.new", divider)
+        self.assertNotIn("chart.left_visible_bar_time", divider)
+        self.assertNotIn("chart.right_visible_bar_time", divider)
 
     def test_desktop_intraday_lod_display_uses_live_session_lod(self):
         desktop = read_desktop()

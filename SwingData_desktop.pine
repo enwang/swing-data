@@ -15,8 +15,6 @@ label_offset = input.int(1, "Label Gap From Line End", minval=0, group=gp_visual
 show_near_intraday_levels = input.bool(true, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
 near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
 use_visible_replay = input.bool(true, "Use Last Complete Visible RTH Day", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values use the latest full regular-session day visible on screen. A partially visible next day is ignored.")
-show_today_divider = input.bool(true, "Show Today Divider", group=gp_visual, display=display.none, tooltip="On intraday charts, draw a vertical marker at the active regular-session start so it is easy to see where today begins.")
-today_divider_col = input.color(color.gray, "Today Divider Color", group=gp_visual, display=display.none)
 
 gp_sma    = "Daily Moving Averages"
 show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
@@ -106,17 +104,6 @@ atr_multiple_detection = 10.0
 dot_col = color.yellow
 rvol_intraday_days = 5
 
-
-// --- GLOBAL SECURITY DATA REQUESTS (MAs) ---
-// No [1] offset — request.security with default lookahead_off already returns
-// the last *closed* daily bar's value, which matches a standard daily SMA overlay.
-// lookahead_on: include TODAY's developing daily bar in the MA value so the
-// numbers on intraday match what the daily chart shows live (not yesterday's value).
-// Safe here because labels only render on the latest bar.
-[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d, atr_ma_d] = request.security(syminfo.tickerid, "D", [ta.sma(close, 5), ta.sma(close, 10), ta.sma(close, 20), ta.sma(close, 50), ta.sma(close, 150), ta.sma(close, 200), ta.ema(close, 10), ta.ema(close, 20), ta.ema(close, 50), ta.sma(close, atr_ma_len)], lookahead=barmerge.lookahead_on)
-
-
-
 // --- SESSION TRACKING & OPENING RANGE ---
 // Explicit time-of-day check for the US equity regular cash session (9:30 AM – 4:00 PM ET).
 // We use this instead of `session.ismarket` / `session.isfirstbar_regular` because those
@@ -158,6 +145,14 @@ else if timeframe.isintraday and is_rth_bar and na(session_start_time)
     session_lod_ready := true
 else if is_rth_bar
     session_last_rth_bar := bar_index
+
+// --- GLOBAL SECURITY DATA REQUESTS (MAs) ---
+// No [1] offset — request.security with default lookahead_off already returns
+// the last *closed* daily bar's value, which matches a standard daily SMA overlay.
+// lookahead_on: include TODAY's developing daily bar in the MA value so the
+// numbers on intraday match what the daily chart shows live (not yesterday's value).
+// Safe here because labels only render on the latest bar.
+[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d, atr_ma_d] = request.security(syminfo.tickerid, "D", [ta.sma(close, 5), ta.sma(close, 10), ta.sma(close, 20), ta.sma(close, 50), ta.sma(close, 150), ta.sma(close, 200), ta.ema(close, 10), ta.ema(close, 20), ta.ema(close, 50), ta.sma(close, atr_ma_len)], lookahead=barmerge.lookahead_on)
 
 time_elapsed_ms = time - session_start_time
 
@@ -330,7 +325,6 @@ var line l_low    = na
 var line l_ppd_low = na
 var line l_or5h   = na
 var line l_or30h  = na
-var line l_today_divider = na
 
 var label lbl_sma5   = na
 var label lbl_sma10  = na
@@ -416,9 +410,8 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
 is_right_visible_bar = time == chart.right_visible_bar_time
 is_complete_visible_rth_day = timeframe.isintraday and is_rth_close_bar and not na(session_start_time) and session_start_time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
 is_visible_rth_day_bar = timeframe.isintraday and is_rth_bar and not na(session_start_time) and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
-is_visible_eth_bar = timeframe.isintraday and not is_rth_bar and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+
 var bool found_complete_visible_rth_day = false
-var bool found_visible_eth_bar = false
 var int anchor_session_start_bar = na
 var int anchor_bar_index = na
 var int anchor_session_start_time = na
@@ -477,9 +470,6 @@ var bool latest_is_atr_extended = false
 if barstate.isfirst
     found_complete_visible_rth_day := false
     found_visible_rth_day := false
-    found_visible_eth_bar := false
-if is_visible_eth_bar
-    found_visible_eth_bar := true
 if is_visible_rth_day_bar
     found_visible_rth_day := true
     latest_session_start_bar := session_start_bar
@@ -567,25 +557,12 @@ active_calc_atr_pct = use_latest_visible_rth_day ? latest_calc_atr_pct : use_com
 active_calc_gain_from_ma = use_latest_visible_rth_day ? latest_calc_gain_from_ma : use_complete_visible_rth_day ? anchor_calc_gain_from_ma : calc_gain_from_ma
 active_calc_atr_mult_from_ma = use_latest_visible_rth_day ? latest_calc_atr_mult_from_ma : use_complete_visible_rth_day ? anchor_calc_atr_mult_from_ma : calc_atr_mult_from_ma
 active_is_atr_extended = use_latest_visible_rth_day ? latest_is_atr_extended : use_complete_visible_rth_day ? anchor_is_atr_extended : is_atr_extended
-show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.01
+show_ppd_low_line = show_l and not na(active_ppd_low) and not na(active_prev_low) and active_ppd_low < active_prev_low and (active_prev_low - active_ppd_low) / active_prev_low < 0.03
 active_rth_end_bar = use_latest_visible_rth_day ? latest_bar_index : use_complete_visible_rth_day ? anchor_bar_index : session_last_rth_bar
 target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index
 target_index = target_base_index + offset
 target_label_index = target_index + label_offset
 should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
-divider_session_start_bar = use_latest_visible_rth_day ? active_session_start_bar : anchor_session_start_bar
-should_draw_today_divider = show_today_divider and timeframe.isintraday and (use_latest_visible_rth_day or found_complete_visible_rth_day) and not found_visible_eth_bar and not na(divider_session_start_bar) and is_data_anchor_bar
-
-if should_draw_today_divider
-    if na(l_today_divider)
-        l_today_divider := line.new(divider_session_start_bar, low, divider_session_start_bar, high, color=color.new(today_divider_col, 35), width=1, style=line.style_dashed, extend=extend.both)
-    else
-        line.set_xy1(l_today_divider, divider_session_start_bar, low)
-        line.set_xy2(l_today_divider, divider_session_start_bar, high)
-        line.set_color(l_today_divider, color.new(today_divider_col, 35))
-else if (not show_today_divider or not timeframe.isintraday) and not na(l_today_divider)
-    line.delete(l_today_divider)
-    l_today_divider := na
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
