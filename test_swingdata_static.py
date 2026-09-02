@@ -170,6 +170,12 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index", desktop)
         self.assertIn("target_index = target_base_index + offset", desktop)
 
+    def test_desktop_nearby_filter_keeps_overhead_levels_near_hod(self):
+        desktop = read_desktop()
+
+        self.assertIn("near_day_high = not na(p) and not na(anchor_hod) and math.abs(p - anchor_hod) <= near_band", desktop)
+        self.assertIn("not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low or near_day_high", desktop)
+
     def test_desktop_has_no_today_divider_logic(self):
         desktop = read_desktop()
 
@@ -183,16 +189,18 @@ class SwingDataStaticTests(unittest.TestCase):
     def test_standalone_intraday_divider_is_lightweight(self):
         divider = read_intraday_divider()
 
-        self.assertIn('indicator("Intraday Divider", overlay=true)', divider)
+        self.assertIn('indicator("Intraday Divider", overlay=true, max_lines_count=500)', divider)
         self.assertIn('show_today_divider = input.bool(true, "Show RTH Start Divider"', divider)
         self.assertIn("is_rth_start_bar = timeframe.isintraday and is_rth_bar and (not is_rth_bar_prev or is_new_exchange_day)", divider)
         self.assertIn("is_rth_only_start_bar = is_rth_start_bar and (is_rth_bar_prev or is_new_exchange_day)", divider)
-        self.assertIn('bgcolor(show_today_divider and is_rth_only_start_bar ? color.new(today_divider_col, divider_alpha) : na, title="RTH Start Divider", editable=false)', divider)
+        self.assertIn("if show_today_divider and is_rth_only_start_bar", divider)
+        self.assertIn("line.new(bar_index, low, bar_index, high", divider)
+        self.assertIn("style=line.style_dashed, extend=extend.both", divider)
         self.assertNotIn("request.security", divider)
         self.assertNotIn("request.security_lower_tf", divider)
         self.assertNotIn("ta.sma", divider)
         self.assertNotIn("ta.ema", divider)
-        self.assertNotIn("line.new", divider)
+        self.assertNotIn("bgcolor", divider)
         self.assertNotIn("chart.left_visible_bar_time", divider)
         self.assertNotIn("chart.right_visible_bar_time", divider)
 

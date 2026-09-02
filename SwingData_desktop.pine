@@ -362,7 +362,8 @@ level_is_relevant_at(float p, float anchor_close, float anchor_lod, float anchor
     overlaps_today = not na(p) and not na(anchor_lod) and not na(anchor_hod) and p >= anchor_lod and p <= anchor_hod
     near_close = not na(p) and math.abs(p - anchor_close) <= near_band
     near_day_low = not na(p) and not na(anchor_lod) and math.abs(p - anchor_lod) <= near_band
-    not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low
+    near_day_high = not na(p) and not na(anchor_hod) and math.abs(p - anchor_hod) <= near_band
+    not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low or near_day_high
 
 level_is_relevant(float p) =>
     level_is_relevant_at(p, close, session_lod, session_hod)
