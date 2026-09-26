@@ -1,0 +1,15 @@
+//@version=6
+indicator("Dollar Volume", shorttitle="Dollar Vol", format=format.volume)
+
+ma_len = input.int(20, "MA Length", minval=1)
+show_ma = input.bool(true, "Show MA")
+
+dollar_volume = volume * close
+dollar_volume_ma = ta.sma(dollar_volume, ma_len)
+
+up_col = color.new(color.rgb(38, 166, 154), 45)
+down_col = color.new(color.rgb(239, 83, 80), 45)
+bar_col = close >= open ? up_col : down_col
+
+plot(dollar_volume, title="Dollar Volume", style=plot.style_columns, color=bar_col)
+plot(show_ma ? dollar_volume_ma : na, title="Dollar Volume MA", color=color.rgb(255, 109, 0), linewidth=1)

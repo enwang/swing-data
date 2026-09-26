@@ -1,5 +1,5 @@
 //@version=6
-indicator("Swing Data Desktop", overlay=true)
+indicator("Swing Data Replay", overlay=true)
 plot(na, title="Compiler Anchor", display=display.none, editable=false)
 
 // Note: The drawn levels (SMAs, PD high/low, opening ranges) only make sense on
@@ -12,6 +12,7 @@ offset    = input.int(6, "Line Extension (Bars Ahead)", minval=0, group=gp_visua
 label_offset = input.int(1, "Label Gap From Line End", minval=0, group=gp_visual, display=display.none)
 show_near_intraday_levels = input.bool(true, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
 near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
+use_visible_replay = input.bool(true, "Use Last Complete Visible RTH Day", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values use the latest full regular-session day visible on screen. A partially visible next day is ignored.")
 
 gp_sma    = "Daily Moving Averages"
 show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
@@ -104,6 +105,8 @@ lbl_max_slots   = input.int(2, "Max Label Stagger Slots", minval=1, maxval=4, gr
 is_rth_bar      = not na(time(timeframe.period, "0930-1600", "America/New_York"))
 is_rth_bar_prev = not na(time(timeframe.period, "0930-1600", "America/New_York")[1])
 is_new_exchange_day = timeframe.isintraday and ta.change(time("D")) != 0
+rth_close_time = timestamp("America/New_York", year(time, "America/New_York"), month(time, "America/New_York"), dayofmonth(time, "America/New_York"), 16, 0)
+is_rth_close_bar = is_rth_bar and time_close >= rth_close_time
 
 // With extended hours on, the 9:30 bar follows pre-market.
 // With extended hours off, the 9:30 bar follows the previous day's last RTH bar.
@@ -284,10 +287,9 @@ stagger_labels(array<line> lns, array<label> lbls, array<float> prices, float mi
         label.set_x(lb, new_x)
         last_price := p
 
-// The fast Desktop version always draws the latest session. Historical
-// visible-range selection lives in the separate Swing Data Replay script.
-is_complete_visible_rth_day = false
-is_visible_rth_day_bar = false
+is_right_visible_bar = time == chart.right_visible_bar_time
+is_complete_visible_rth_day = timeframe.isintraday and is_rth_close_bar and not na(session_start_time) and session_start_time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
+is_visible_rth_day_bar = timeframe.isintraday and is_rth_bar and not na(session_start_time) and time >= chart.left_visible_bar_time and time <= chart.right_visible_bar_time
 
 var bool found_complete_visible_rth_day = false
 var int anchor_session_start_bar = na
@@ -378,9 +380,11 @@ if is_complete_visible_rth_day
     anchor_ppd_low := ppd_low
     anchor_or5_high := or5_high
     anchor_or30_high := or30_high
+// Replay always anchors to the rightmost complete visible RTH day. The fast
+// Desktop script owns the latest session, including a still-active partial day.
 use_latest_visible_rth_day = false
-use_complete_visible_rth_day = false
-is_data_anchor_bar = barstate.islast
+use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and found_complete_visible_rth_day
+is_data_anchor_bar = use_visible_replay ? (timeframe.isintraday ? is_right_visible_bar : is_right_visible_bar) : barstate.islast
 active_session_start_bar = use_latest_visible_rth_day ? latest_session_start_bar : use_complete_visible_rth_day ? anchor_session_start_bar : session_start_bar
 active_bar_index = use_latest_visible_rth_day ? latest_bar_index : use_complete_visible_rth_day ? anchor_bar_index : bar_index
 active_close = use_latest_visible_rth_day ? latest_close : use_complete_visible_rth_day ? anchor_close : close
@@ -405,7 +409,10 @@ active_rth_end_bar = use_latest_visible_rth_day ? latest_bar_index : use_complet
 target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index
 target_index = target_base_index + offset
 target_label_index = target_index + label_offset
-should_create_levels = timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
+current_rth_start = timestamp("America/New_York", year(timenow, "America/New_York"), month(timenow, "America/New_York"), dayofmonth(timenow, "America/New_York"), 9, 30)
+current_rth_end = timestamp("America/New_York", year(timenow, "America/New_York"), month(timenow, "America/New_York"), dayofmonth(timenow, "America/New_York"), 16, 0)
+market_is_active = timenow >= current_rth_start and timenow < current_rth_end and last_bar_time >= current_rth_start
+should_create_levels = timeframe.isintraday and not market_is_active and (not use_visible_replay or use_complete_visible_rth_day) and not na(active_session_start_bar) and is_data_anchor_bar
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
@@ -486,7 +493,7 @@ if should_create_levels
         l_today_low   := line.new(active_session_start_bar, active_session_lod, target_index, active_session_lod, color=col_today_low, width=w_today_low, style=get_style(style_today_low))
         lbl_today_low := label.new(target_label_index, active_session_lod, get_text("Today Low", active_session_lod), color=color.new(color.black, 100), textcolor=col_today_low, style=label.style_label_left, tooltip=get_text("Today Low", active_session_lod))
 
-if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
+if timeframe.isintraday and not market_is_active and (not use_visible_replay or use_complete_visible_rth_day) and not na(active_session_start_bar) and is_data_anchor_bar
     if show_5 and not na(l_sma5)
         line.set_x2(l_sma5, target_index)
         label.set_x(lbl_sma5, target_label_index)
