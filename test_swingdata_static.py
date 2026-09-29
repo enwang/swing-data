@@ -7,6 +7,7 @@ DESKTOP = ROOT / "SwingData_desktop.pine"
 MOBILE = ROOT / "SwingData_mobile.pine"
 INTRADAY_DIVIDER = ROOT / "intraday_divider.pine"
 ATR_RVOL = ROOT / "atr_rvol.pine"
+ATR_RVOL_MOBILE = ROOT / "atr_rvol_mobile.pine"
 DOLLAR_VOLUME = ROOT / "dollar_volume.pine"
 REPLAY = ROOT / "SwingData_replay.pine"
 
@@ -25,6 +26,10 @@ def read_intraday_divider() -> str:
 
 def read_data_table() -> str:
     return ATR_RVOL.read_text()
+
+
+def read_mobile_data_table() -> str:
+    return ATR_RVOL_MOBILE.read_text()
 
 
 def read_dollar_volume() -> str:
@@ -212,6 +217,19 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("rvol_slot_count = rvol_session_minutes * (rvol_intraday_days + 1)", table)
         self.assertIn("if is_new_day", table)
         self.assertIn("if timeframe.isintraday and is_rth_bar", table)
+        self.assertIn("calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol", table)
+
+    def test_mobile_data_table_restores_compact_atr_lod_rvol_dashboard(self):
+        table = read_mobile_data_table()
+
+        self.assertIn('indicator("ATR RVOL Mobile", overlay=true)', table)
+        self.assertIn("tbl_size  = input.string('Tiny'", table)
+        self.assertIn("var table mobile_tbl = table.new(position.bottom_right, 3, 5", table)
+        self.assertIn('table.cell(mobile_tbl, 1, 0, "rVOL"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 1, "LoD%"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 2, "Multiple"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 3, "Gain%"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 4, "ATR%"', table)
         self.assertIn("calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol", table)
 
     def test_desktop_line_length_is_capped_to_rth_bars(self):

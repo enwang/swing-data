@@ -1,0 +1,158 @@
+//@version=6
+indicator("ATR RVOL Mobile", overlay=true)
+plot(na, title="Compiler Anchor", display=display.none, editable=false)
+
+// All inputs use display=display.none so their current values do NOT clutter
+// the chart's status line at the top. Settings are still editable via the gear icon.
+gp_tbl    = "ATR RVOL"
+tbl_size  = input.string('Tiny', "Size", options=['Tiny', 'Small', 'Normal', 'Large'], group=gp_tbl, display=display.none)
+
+tbl_text_col = color.teal
+tbl_extended_col = color.red
+atr_len = 20
+atr_ma_len = 50
+atr_multiple_detection = 10.0
+dot_col = color.yellow
+rvol_intraday_days = 5
+
+// Explicit time-of-day check for the US equity regular cash session (9:30 AM - 4:00 PM ET).
+// Extended-hours bars are ignored for LoD and intraday RVOL.
+is_rth_bar      = not na(time(timeframe.period, "0930-1600", "America/New_York"))
+is_rth_bar_prev = not na(time(timeframe.period, "0930-1600", "America/New_York")[1])
+is_new_exchange_day = timeframe.isintraday and ta.change(time("D")) != 0
+is_new_day = is_rth_bar and (not is_rth_bar_prev or is_new_exchange_day)
+
+var float session_lod = na
+var bool session_lod_ready = false
+if is_new_exchange_day and not is_rth_bar
+    session_lod := na
+    session_lod_ready := false
+else if is_new_day
+    session_lod := low
+    session_lod_ready := true
+else if timeframe.isintraday and is_rth_bar and na(session_lod)
+    session_lod := low
+    session_lod_ready := true
+else if is_rth_bar
+    session_lod := math.min(session_lod, low)
+
+lower_tf = timeframe.isintraday and timeframe.multiplier >= 30 ? "1" : timeframe.isintraday ? str.tostring(timeframe.multiplier) : "1"
+lower_lows   = request.security_lower_tf(syminfo.tickerid, lower_tf, low)
+lower_times  = request.security_lower_tf(syminfo.tickerid, lower_tf, time)
+lower_market = request.security_lower_tf(syminfo.tickerid, lower_tf, session.ismarket)
+
+// On daily/weekly/monthly charts, TradingView's bar low may include extended hours.
+// Scan lower-timeframe regular-session bars so LoD matches the RTH low.
+var float daily_rth_low = na
+if not timeframe.isintraday
+    daily_rth_low := na
+    if array.size(lower_lows) > 0
+        for i = 0 to array.size(lower_lows) - 1
+            if array.get(lower_market, i)
+                bar_low = array.get(lower_lows, i)
+                daily_rth_low := na(daily_rth_low) ? bar_low : math.min(daily_rth_low, bar_low)
+
+if timeframe.isintraday and timeframe.multiplier >= 5 and is_rth_bar and array.size(lower_lows) > 0
+    for i = 0 to array.size(lower_lows) - 1
+        bar_time = array.get(lower_times, i)
+        bar_low  = array.get(lower_lows, i)
+
+        if bar_time >= timestamp("America/New_York", year(time, "America/New_York"), month(time, "America/New_York"), dayofmonth(time, "America/New_York"), 9, 30)
+            session_lod := na(session_lod) ? bar_low : math.min(session_lod, bar_low)
+
+[d_close, d_volume, d_vol_ma50, d_atr, d_atr_ma] = request.security(syminfo.tickerid, "D", [close, volume, ta.sma(volume, 50), ta.atr(atr_len), ta.sma(close, atr_ma_len)])
+
+// RTH same-time RVOL: today's cumulative regular-session volume at this minute
+// vs the average cumulative volume at the same minute over recent regular sessions.
+rvol_session_minutes = 390
+rvol_slot_count = rvol_session_minutes * (rvol_intraday_days + 1)
+rvol_start_ts = timestamp("America/New_York", year(time, "America/New_York"), month(time, "America/New_York"), dayofmonth(time, "America/New_York"), 9, 30)
+rvol_elapsed_min = int(math.floor((time - rvol_start_ts) / 60000))
+rvol_minute_slot = math.max(0, math.min(rvol_session_minutes - 1, rvol_elapsed_min))
+
+var float rth_cum_vol = na
+var rvol_cum_by_minute = array.new_float(rvol_slot_count, na)
+
+if is_new_day
+    rth_cum_vol := volume
+    for i = 0 to rvol_session_minutes - 1
+        for d = 0 to rvol_intraday_days - 1
+            array.set(rvol_cum_by_minute, d * rvol_session_minutes + i, array.get(rvol_cum_by_minute, (d + 1) * rvol_session_minutes + i))
+        array.set(rvol_cum_by_minute, rvol_intraday_days * rvol_session_minutes + i, na)
+else if timeframe.isintraday and is_rth_bar
+    rth_cum_vol := nz(rth_cum_vol[1]) + volume
+
+if timeframe.isintraday and is_rth_bar
+    array.set(rvol_cum_by_minute, rvol_intraday_days * rvol_session_minutes + rvol_minute_slot, rth_cum_vol)
+
+float hist_cum_vol = 0.0
+int hist_count = 0
+if timeframe.isintraday and is_rth_bar
+    for d = 0 to rvol_intraday_days - 1
+        past_cum_vol = array.get(rvol_cum_by_minute, d * rvol_session_minutes + rvol_minute_slot)
+        if not na(past_cum_vol) and past_cum_vol > 0
+            hist_cum_vol += past_cum_vol
+            hist_count += 1
+
+intraday_rvol = timeframe.isintraday and is_rth_bar and hist_count > 0 ? rth_cum_vol / (hist_cum_vol / hist_count) : na
+var float last_intraday_rvol = na
+if not na(intraday_rvol)
+    last_intraday_rvol := intraday_rvol
+
+chart_close  = timeframe.isintraday ? d_close    : close
+chart_vol    = timeframe.isintraday ? d_volume   : volume
+chart_vol_ma = timeframe.isintraday ? d_vol_ma50 : ta.sma(volume, 50)[1]
+chart_atr    = timeframe.isintraday ? d_atr      : ta.atr(atr_len)
+chart_lod    = timeframe.isintraday ? session_lod : na(daily_rth_low) ? low : daily_rth_low
+chart_ref_ma = timeframe.isintraday ? d_atr_ma : ta.sma(close, atr_ma_len)
+
+daily_rvol = chart_vol_ma > 0 ? (chart_vol / chart_vol_ma) * 100 : na
+calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol
+lodd_close = timeframe.isintraday ? close : chart_close
+calc_lodd = chart_atr > 0 ? ((lodd_close - chart_lod) / chart_atr) * 100 : na
+calc_atr_pct = chart_close > 0 ? (chart_atr / chart_close) * 100 : na
+calc_gain_from_ma = chart_ref_ma > 0 ? ((chart_close - chart_ref_ma) / chart_ref_ma) * 100 : na
+calc_atr_mult_from_ma = calc_atr_pct != 0 ? calc_gain_from_ma / calc_atr_pct : na
+is_atr_extended = calc_atr_mult_from_ma > atr_multiple_detection
+
+plotshape(is_atr_extended ? high * 1.01 : na, title="ATR Multiple Dot", style=shape.circle, location=location.absolute, size=size.tiny, color=dot_col, display=display.pane, editable=false)
+
+table_size_sel = switch tbl_size
+    'Tiny'   => size.tiny
+    'Small'  => size.small
+    'Normal' => size.normal
+    'Large'  => size.large
+
+// One compact bottom-right table keeps the mobile chart unobstructed.
+var table mobile_tbl = table.new(position.bottom_right, 3, 5, bgcolor=color.new(color.black, 100))
+
+if barstate.islast
+    has_lod = (not timeframe.isintraday or session_lod_ready) and not na(chart_lod) and not na(calc_lodd)
+    color_rvol = calc_rvol > 50.0 ? tbl_text_col : tbl_extended_col
+    color_lodd = has_lod and calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col
+    color_gain = calc_gain_from_ma >= 0.0 ? tbl_text_col : tbl_extended_col
+    color_atr_mult = is_atr_extended ? tbl_extended_col : tbl_text_col
+
+    str_rvol = str.tostring(calc_rvol, "0") + "%"
+    str_lodd = has_lod ? str.tostring(calc_lodd, "0") + "%" : ""
+    str_atr_mult = str.tostring(calc_atr_mult_from_ma, "0.00")
+    str_gain_ma = str.tostring(calc_gain_from_ma, "0.00") + "%"
+    str_atr_pct = str.tostring(calc_atr_pct, "0.00") + "%"
+
+    for row = 0 to 4
+        table.cell(mobile_tbl, 0, row, " ", text_size=table_size_sel)
+
+    table.cell(mobile_tbl, 1, 0, "rVOL",     text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(mobile_tbl, 2, 0, str_rvol,    text_color=color_rvol,     text_size=table_size_sel, text_halign=text.align_right)
+
+    table.cell(mobile_tbl, 1, 1, "LoD%",     text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(mobile_tbl, 2, 1, str_lodd,    text_color=color_lodd,     text_size=table_size_sel, text_halign=text.align_right)
+
+    table.cell(mobile_tbl, 1, 2, "Multiple", text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(mobile_tbl, 2, 2, str_atr_mult, text_color=color_atr_mult, text_size=table_size_sel, text_halign=text.align_right)
+
+    table.cell(mobile_tbl, 1, 3, "Gain%",    text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(mobile_tbl, 2, 3, str_gain_ma, text_color=color_gain,     text_size=table_size_sel, text_halign=text.align_right)
+
+    table.cell(mobile_tbl, 1, 4, "ATR%",     text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(mobile_tbl, 2, 4, str_atr_pct, text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_right)
