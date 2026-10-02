@@ -192,6 +192,16 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn('offset    = input.int(3, "Line Extension (Bars Ahead)"', mobile)
         self.assertIn('label_offset = input.int(0, "Label Gap From Line End"', mobile)
 
+    def test_mobile_enables_all_moving_average_labels_by_default(self):
+        mobile = read_mobile()
+
+        self.assertIn('show_near_intraday_levels = input.bool(false, "Intraday: Only Show Nearby/Overlapped Levels"', mobile)
+        self.assertIn('show_5    = input.bool(true,  "Show 5D SMA"', mobile)
+        self.assertNotIn("ema_skip_gap", mobile)
+        self.assertIn("if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)", mobile)
+        self.assertIn("if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)", mobile)
+        self.assertIn("if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)", mobile)
+
     def test_desktop_core_data_requests_are_not_history_limited(self):
         source = read_desktop() + "\n" + read_data_table()
 

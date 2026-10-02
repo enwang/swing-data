@@ -10,11 +10,11 @@ plot(na, title="Compiler Anchor", display=display.none, editable=false)
 gp_visual = "Visual Layout Settings"
 offset    = input.int(3, "Line Extension (Bars Ahead)", minval=0, group=gp_visual, display=display.none)
 label_offset = input.int(0, "Label Gap From Line End", minval=0, group=gp_visual, display=display.none)
-show_near_intraday_levels = input.bool(true, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
+show_near_intraday_levels = input.bool(false, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
 near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
 
 gp_sma    = "Daily Moving Averages"
-show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
+show_5    = input.bool(true,  "Show 5D SMA",   group=gp_sma, display=display.none)
 col_5     = input.color(color.blue, "",        group=gp_sma, display=display.none)
 w_5       = input.int(1, "Width", minval=1, maxval=5, group=gp_sma, display=display.none)
 style_5   = input.string("Solid", "Style", options=["Solid", "Dashed", "Dotted"], group=gp_sma, display=display.none)
@@ -459,17 +459,13 @@ if should_create_levels
         l_sma200  := line.new(active_session_start_bar, active_sma200_d, target_index, active_sma200_d, color=col_200, width=w_200, style=get_style(style_200))
         lbl_sma200:= label.new(target_label_index, active_sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", active_sma200_d))
 
-    // EMAs — skip the EMA entirely if it's within ~0.3% of price of its sibling SMA
-    // (10D EMA vs 10D SMA, 20D EMA vs 20D SMA). When MAs overlap that closely the
-    // labels would just stack on top of each other, so showing one is enough.
-    ema_skip_gap = active_close * 0.003
-    if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod) and (not show_10 or math.abs(active_ema10_d - active_sma10_d) > ema_skip_gap)
+    if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)
         l_ema10   := line.new(active_session_start_bar, active_ema10_d, target_index, active_ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
         lbl_ema10 := label.new(target_label_index, active_ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", active_ema10_d))
-    if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod) and (not show_20 or math.abs(active_ema20_d - active_sma20_d) > ema_skip_gap)
+    if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)
         l_ema20   := line.new(active_session_start_bar, active_ema20_d, target_index, active_ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
         lbl_ema20 := label.new(target_label_index, active_ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", active_ema20_d))
-    if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod) and (not show_50 or math.abs(active_ema50_d - active_sma50_d) > ema_skip_gap)
+    if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)
         l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
         lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
 
