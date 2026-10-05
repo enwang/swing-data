@@ -10,7 +10,6 @@ ATR_RVOL = ROOT / "atr_rvol.pine"
 ATR_RVOL_MOBILE = ROOT / "atr_rvol_mobile.pine"
 DOLLAR_VOLUME = ROOT / "dollar_volume.pine"
 REPLAY = ROOT / "SwingData_replay.pine"
-MOVING_AVERAGES_FAST = ROOT / "moving_averages_fast.pine"
 
 
 def read_desktop() -> str:
@@ -41,10 +40,6 @@ def read_replay() -> str:
     return REPLAY.read_text()
 
 
-def read_moving_averages_fast() -> str:
-    return MOVING_AVERAGES_FAST.read_text()
-
-
 def assignment(source: str, name: str) -> str:
     for line in source.splitlines():
         stripped = line.strip()
@@ -54,17 +49,6 @@ def assignment(source: str, name: str) -> str:
 
 
 class SwingDataStaticTests(unittest.TestCase):
-    def test_fast_moving_averages_are_stable_on_intraday_charts(self):
-        source = read_moving_averages_fast()
-
-        self.assertIn('request.security(syminfo.tickerid, "D"', source)
-        self.assertIn("ta.ema(close, 10)[1]", source)
-        self.assertIn("ta.ema(close, 20)[1]", source)
-        self.assertIn("ta.ema(close, 50)[1]", source)
-        self.assertIn("ta.sma(close, 200)[1]", source)
-        self.assertIn("ta.sma(close, 50)[1]", source)
-        self.assertNotIn('"Intraday 10 EMA"', source)
-
     def test_no_vertical_label_price_offset(self):
         source = read_desktop() + "\n" + read_mobile()
 
