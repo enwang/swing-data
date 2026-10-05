@@ -1,0 +1,68 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Optimized for the current Swing Data chart setup.
+//@version=6
+indicator("Moving Averages Fast", shorttitle="MA Fast", overlay=true)
+
+line_width = input.int(1, "Line Width", minval=1, maxval=4)
+
+group_intra = "Intraday Moving Averages"
+show_intra_10ema = input.bool(true, "10 EMA", inline="i1", group=group_intra)
+color_intra_10ema = input.color(color.rgb(214, 74, 74), "", inline="i1", group=group_intra)
+show_intra_20ema = input.bool(true, "20 EMA", inline="i2", group=group_intra)
+color_intra_20ema = input.color(color.rgb(240, 165, 35), "", inline="i2", group=group_intra)
+show_intra_50ema = input.bool(true, "50 EMA", inline="i3", group=group_intra)
+color_intra_50ema = input.color(color.rgb(65, 105, 225), "", inline="i3", group=group_intra)
+show_intra_200sma = input.bool(true, "200 SMA", inline="i4", group=group_intra)
+color_intra_200sma = input.color(color.rgb(91, 63, 191), "", inline="i4", group=group_intra)
+show_intra_6ema = input.bool(true, "6 EMA", inline="i5", group=group_intra)
+color_intra_6ema = input.color(color.rgb(226, 157, 163), "", inline="i5", group=group_intra)
+
+group_daily = "Daily Moving Averages"
+show_daily_10ema = input.bool(true, "10 EMA", inline="d1", group=group_daily)
+color_daily_10ema = input.color(color.rgb(214, 74, 74), "", inline="d1", group=group_daily)
+show_daily_20ema = input.bool(true, "20 EMA", inline="d2", group=group_daily)
+color_daily_20ema = input.color(color.rgb(240, 165, 35), "", inline="d2", group=group_daily)
+show_daily_50ema = input.bool(true, "50 EMA", inline="d3", group=group_daily)
+color_daily_50ema = input.color(color.rgb(65, 105, 225), "", inline="d3", group=group_daily)
+show_daily_200sma = input.bool(true, "200 SMA", inline="d4", group=group_daily)
+color_daily_200sma = input.color(color.rgb(91, 63, 191), "", inline="d4", group=group_daily)
+show_daily_50sma = input.bool(true, "50 SMA", inline="d5", group=group_daily)
+color_daily_50sma = input.color(color.rgb(156, 188, 232), "", inline="d5", group=group_daily)
+
+group_weekly = "Weekly Moving Averages"
+show_weekly_10ema = input.bool(true, "10 EMA", inline="w1", group=group_weekly)
+color_weekly_10ema = input.color(color.rgb(214, 74, 74), "", inline="w1", group=group_weekly)
+show_weekly_20ema = input.bool(true, "20 EMA", inline="w2", group=group_weekly)
+color_weekly_20ema = input.color(color.rgb(240, 165, 35), "", inline="w2", group=group_weekly)
+show_weekly_40ema = input.bool(true, "40 EMA", inline="w3", group=group_weekly)
+color_weekly_40ema = input.color(color.rgb(65, 105, 225), "", inline="w3", group=group_weekly)
+show_weekly_200ema = input.bool(true, "200 EMA", inline="w4", group=group_weekly)
+color_weekly_200ema = input.color(color.rgb(91, 63, 191), "", inline="w4", group=group_weekly)
+
+group_monthly = "Monthly Moving Averages"
+show_monthly_10sma = input.bool(true, "10 SMA", inline="m1", group=group_monthly)
+color_monthly_10sma = input.color(color.rgb(146, 149, 157), "", inline="m1", group=group_monthly)
+
+is_intra = timeframe.isintraday
+is_daily = timeframe.isdaily
+is_weekly = timeframe.isweekly
+is_monthly = timeframe.ismonthly
+
+plot(is_intra and show_intra_10ema ? ta.ema(close, 10) : na, "Intraday 10 EMA", color_intra_10ema, line_width)
+plot(is_intra and show_intra_20ema ? ta.ema(close, 20) : na, "Intraday 20 EMA", color_intra_20ema, line_width)
+plot(is_intra and show_intra_50ema ? ta.ema(close, 50) : na, "Intraday 50 EMA", color_intra_50ema, line_width)
+plot(is_intra and show_intra_200sma ? ta.sma(close, 200) : na, "Intraday 200 SMA", color_intra_200sma, line_width)
+plot(is_intra and show_intra_6ema ? ta.ema(close, 6) : na, "Intraday 6 EMA", color_intra_6ema, line_width)
+
+plot(is_daily and show_daily_10ema ? ta.ema(close, 10) : na, "Daily 10 EMA", color_daily_10ema, line_width)
+plot(is_daily and show_daily_20ema ? ta.ema(close, 20) : na, "Daily 20 EMA", color_daily_20ema, line_width)
+plot(is_daily and show_daily_50ema ? ta.ema(close, 50) : na, "Daily 50 EMA", color_daily_50ema, line_width)
+plot(is_daily and show_daily_200sma ? ta.sma(close, 200) : na, "Daily 200 SMA", color_daily_200sma, line_width)
+plot(is_daily and show_daily_50sma ? ta.sma(close, 50) : na, "Daily 50 SMA", color_daily_50sma, line_width)
+
+plot(is_weekly and show_weekly_10ema ? ta.ema(close, 10) : na, "Weekly 10 EMA", color_weekly_10ema, line_width)
+plot(is_weekly and show_weekly_20ema ? ta.ema(close, 20) : na, "Weekly 20 EMA", color_weekly_20ema, line_width)
+plot(is_weekly and show_weekly_40ema ? ta.ema(close, 40) : na, "Weekly 40 EMA", color_weekly_40ema, line_width)
+plot(is_weekly and show_weekly_200ema ? ta.ema(close, 200) : na, "Weekly 200 EMA", color_weekly_200ema, line_width)
+
+plot(is_monthly and show_monthly_10sma ? ta.sma(close, 10) : na, "Monthly 10 SMA", color_monthly_10sma, line_width)
