@@ -53,9 +53,27 @@ class SwingDataStaticTests(unittest.TestCase):
         replay = read_replay()
 
         self.assertIn("use_partial_visible_rth_day = timeframe.isminutes and timeframe.multiplier == 1", replay)
-        self.assertIn("use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day", replay)
+        self.assertIn("use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day and not latest_visible_is_live_day", replay)
         self.assertIn("not use_partial_visible_rth_day and found_complete_visible_rth_day", replay)
         self.assertIn("has_replay_anchor = use_latest_visible_rth_day or use_complete_visible_rth_day", replay)
+
+    def test_replay_does_not_duplicate_latest_day_and_matches_ma_algorithm(self):
+        replay = read_replay()
+
+        self.assertIn("latest_visible_is_live_day = latest_visible_day == latest_loaded_day", replay)
+        self.assertIn("complete_visible_is_live_day = complete_visible_day == latest_loaded_day", replay)
+        for expression in (
+            "ta.sma(close, 5)[1]",
+            "ta.sma(close, 10)[1]",
+            "ta.sma(close, 20)[1]",
+            "ta.sma(close, 50)[1]",
+            "ta.sma(close, 150)[1]",
+            "ta.sma(close, 200)[1]",
+            "ta.ema(close, 10)[1]",
+            "ta.ema(close, 20)[1]",
+            "ta.ema(close, 50)[1]",
+        ):
+            self.assertIn(expression, replay)
 
     def test_daily_ma_levels_use_only_completed_daily_bars(self):
         for source in (read_desktop(), read_mobile()):
@@ -136,8 +154,8 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("is_right_visible_bar = time == chart.right_visible_bar_time", replay)
         self.assertIn("session_start_time >= chart.left_visible_bar_time", replay)
         self.assertIn("time >= chart.left_visible_bar_time", replay)
-        self.assertIn("use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day", replay)
-        self.assertIn("use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and not use_partial_visible_rth_day and found_complete_visible_rth_day", replay)
+        self.assertIn("use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day and not latest_visible_is_live_day", replay)
+        self.assertIn("use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and not use_partial_visible_rth_day and found_complete_visible_rth_day and not complete_visible_is_live_day", replay)
         self.assertNotIn("replay_is_historical_view", replay)
         self.assertIn('current_rth_start = timestamp("America/New_York", year(timenow, "America/New_York")', replay)
         self.assertIn('current_rth_end = timestamp("America/New_York", year(timenow, "America/New_York")', replay)

@@ -136,12 +136,9 @@ else if is_rth_bar
     session_last_rth_bar := bar_index
 
 // --- GLOBAL SECURITY DATA REQUESTS (MAs) ---
-// No [1] offset — request.security with default lookahead_off already returns
-// the last *closed* daily bar's value, which matches a standard daily SMA overlay.
-// lookahead_on: include TODAY's developing daily bar in the MA value so the
-// numbers on intraday match what the daily chart shows live (not yesterday's value).
-// Safe here because labels only render on the latest bar.
-[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [ta.sma(close, 5), ta.sma(close, 10), ta.sma(close, 20), ta.sma(close, 50), ta.sma(close, 150), ta.sma(close, 200), ta.ema(close, 10), ta.ema(close, 20), ta.ema(close, 50)], lookahead=barmerge.lookahead_on)
+// Match the fast Swing Data indicators: use only the last completed daily bar
+// so replay and latest-session MA levels use the same calculation.
+[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [ta.sma(close, 5)[1], ta.sma(close, 10)[1], ta.sma(close, 20)[1], ta.sma(close, 50)[1], ta.sma(close, 150)[1], ta.sma(close, 200)[1], ta.ema(close, 10)[1], ta.ema(close, 20)[1], ta.ema(close, 50)[1]], lookahead=barmerge.lookahead_on)
 
 time_elapsed_ms = time - session_start_time
 
@@ -383,8 +380,13 @@ if is_complete_visible_rth_day
 // On 1-minute charts, use the rightmost visible RTH day even when only part of
 // that day is visible. Higher intraday timeframes keep the complete-day rule.
 use_partial_visible_rth_day = timeframe.isminutes and timeframe.multiplier == 1
-use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day
-use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and not use_partial_visible_rth_day and found_complete_visible_rth_day
+int latest_loaded_day = timestamp("America/New_York", year(last_bar_time, "America/New_York"), month(last_bar_time, "America/New_York"), dayofmonth(last_bar_time, "America/New_York"), 0, 0)
+int latest_visible_day = na(latest_session_start_time) ? na : timestamp("America/New_York", year(latest_session_start_time, "America/New_York"), month(latest_session_start_time, "America/New_York"), dayofmonth(latest_session_start_time, "America/New_York"), 0, 0)
+int complete_visible_day = na(anchor_session_start_time) ? na : timestamp("America/New_York", year(anchor_session_start_time, "America/New_York"), month(anchor_session_start_time, "America/New_York"), dayofmonth(anchor_session_start_time, "America/New_York"), 0, 0)
+latest_visible_is_live_day = latest_visible_day == latest_loaded_day
+complete_visible_is_live_day = complete_visible_day == latest_loaded_day
+use_latest_visible_rth_day = use_visible_replay and use_partial_visible_rth_day and found_visible_rth_day and not latest_visible_is_live_day
+use_complete_visible_rth_day = use_visible_replay and timeframe.isintraday and not use_partial_visible_rth_day and found_complete_visible_rth_day and not complete_visible_is_live_day
 has_replay_anchor = use_latest_visible_rth_day or use_complete_visible_rth_day
 is_data_anchor_bar = use_visible_replay ? (timeframe.isintraday ? is_right_visible_bar : is_right_visible_bar) : barstate.islast
 active_session_start_bar = use_latest_visible_rth_day ? latest_session_start_bar : use_complete_visible_rth_day ? anchor_session_start_bar : session_start_bar
