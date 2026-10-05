@@ -49,6 +49,18 @@ def assignment(source: str, name: str) -> str:
 
 
 class SwingDataStaticTests(unittest.TestCase):
+    def test_daily_ma_levels_use_only_completed_daily_bars(self):
+        for source in (read_desktop(), read_mobile()):
+            self.assertIn("ta.sma(close, 5)[1]", source)
+            self.assertIn("ta.sma(close, 10)[1]", source)
+            self.assertIn("ta.sma(close, 20)[1]", source)
+            self.assertIn("ta.sma(close, 50)[1]", source)
+            self.assertIn("ta.sma(close, 150)[1]", source)
+            self.assertIn("ta.sma(close, 200)[1]", source)
+            self.assertIn("ta.ema(close, 10)[1]", source)
+            self.assertIn("ta.ema(close, 20)[1]", source)
+            self.assertIn("ta.ema(close, 50)[1]", source)
+
     def test_no_vertical_label_price_offset(self):
         source = read_desktop() + "\n" + read_mobile()
 
