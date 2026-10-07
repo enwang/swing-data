@@ -141,8 +141,8 @@ daily_ema_with_open(int length) =>
     alpha = 2.0 / (length + 1.0)
     previous_ema + alpha * (open - previous_ema)
 
-// Include today's fixed daily open while keeping intraday MA labels stable.
-[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [daily_sma_with_open(5), daily_sma_with_open(10), daily_sma_with_open(20), daily_sma_with_open(50), daily_sma_with_open(150), daily_sma_with_open(200), daily_ema_with_open(10), daily_ema_with_open(20), daily_ema_with_open(50)], lookahead=barmerge.lookahead_on)
+// Keep short MAs aligned with the live daily chart; stabilize longer MAs with today's open.
+[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [daily_sma_with_open(5), ta.sma(close, 10), ta.sma(close, 20), daily_sma_with_open(50), daily_sma_with_open(150), daily_sma_with_open(200), ta.ema(close, 10), ta.ema(close, 20), daily_ema_with_open(50)], lookahead=barmerge.lookahead_on)
 
 time_elapsed_ms = time - session_start_time
 

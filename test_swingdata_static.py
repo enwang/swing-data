@@ -65,15 +65,19 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("daily_sma_with_open(200)", replay)
         self.assertIn("daily_ema_with_open(50)", replay)
 
-    def test_daily_ma_levels_include_today_open_and_stay_stable_intraday(self):
+    def test_short_daily_mas_are_live_and_long_daily_mas_use_today_open(self):
         for source in (read_desktop(), read_mobile(), read_replay()):
             self.assertIn("(ta.sma(close[1], length - 1) * (length - 1) + open) / length", source)
             self.assertIn("previous_ema = ta.ema(close, length)[1]", source)
             self.assertIn("previous_ema + alpha * (open - previous_ema)", source)
-            for length in (5, 10, 20, 50, 150, 200):
+            for length in (5, 50, 150, 200):
                 self.assertIn(f"daily_sma_with_open({length})", source)
-            for length in (10, 20, 50):
-                self.assertIn(f"daily_ema_with_open({length})", source)
+            self.assertIn("daily_ema_with_open(50)", source)
+            for length in (10, 20):
+                self.assertIn(f"ta.sma(close, {length})", source)
+                self.assertIn(f"ta.ema(close, {length})", source)
+                self.assertNotIn(f"daily_sma_with_open({length})", source)
+                self.assertNotIn(f"daily_ema_with_open({length})", source)
 
     def test_no_vertical_label_price_offset(self):
         source = read_desktop() + "\n" + read_mobile()
