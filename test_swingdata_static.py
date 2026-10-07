@@ -62,30 +62,18 @@ class SwingDataStaticTests(unittest.TestCase):
 
         self.assertIn("latest_visible_is_live_day = latest_visible_day == latest_loaded_day", replay)
         self.assertIn("complete_visible_is_live_day = complete_visible_day == latest_loaded_day", replay)
-        for expression in (
-            "ta.sma(close, 5)[1]",
-            "ta.sma(close, 10)[1]",
-            "ta.sma(close, 20)[1]",
-            "ta.sma(close, 50)[1]",
-            "ta.sma(close, 150)[1]",
-            "ta.sma(close, 200)[1]",
-            "ta.ema(close, 10)[1]",
-            "ta.ema(close, 20)[1]",
-            "ta.ema(close, 50)[1]",
-        ):
-            self.assertIn(expression, replay)
+        self.assertIn("daily_sma_with_open(200)", replay)
+        self.assertIn("daily_ema_with_open(50)", replay)
 
-    def test_daily_ma_levels_use_only_completed_daily_bars(self):
-        for source in (read_desktop(), read_mobile()):
-            self.assertIn("ta.sma(close, 5)[1]", source)
-            self.assertIn("ta.sma(close, 10)[1]", source)
-            self.assertIn("ta.sma(close, 20)[1]", source)
-            self.assertIn("ta.sma(close, 50)[1]", source)
-            self.assertIn("ta.sma(close, 150)[1]", source)
-            self.assertIn("ta.sma(close, 200)[1]", source)
-            self.assertIn("ta.ema(close, 10)[1]", source)
-            self.assertIn("ta.ema(close, 20)[1]", source)
-            self.assertIn("ta.ema(close, 50)[1]", source)
+    def test_daily_ma_levels_include_today_open_and_stay_stable_intraday(self):
+        for source in (read_desktop(), read_mobile(), read_replay()):
+            self.assertIn("(ta.sma(close[1], length - 1) * (length - 1) + open) / length", source)
+            self.assertIn("previous_ema = ta.ema(close, length)[1]", source)
+            self.assertIn("previous_ema + alpha * (open - previous_ema)", source)
+            for length in (5, 10, 20, 50, 150, 200):
+                self.assertIn(f"daily_sma_with_open({length})", source)
+            for length in (10, 20, 50):
+                self.assertIn(f"daily_ema_with_open({length})", source)
 
     def test_no_vertical_label_price_offset(self):
         source = read_desktop() + "\n" + read_mobile()
@@ -138,7 +126,7 @@ class SwingDataStaticTests(unittest.TestCase):
         for source in (read_desktop(), read_mobile()):
             self.assertIn("show_150  = input.bool(true,  \"Show 150D SMA\"", source)
             self.assertIn("col_150   = color.rgb(190, 150, 255)", source)
-            self.assertIn("ta.sma(close, 150)", source)
+            self.assertIn("daily_sma_with_open(150)", source)
 
         for source in (read_desktop(), read_mobile()):
             self.assertIn("l_sma150  := line.new(active_session_start_bar, active_sma150_d", source)
