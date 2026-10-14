@@ -232,6 +232,14 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)", mobile)
         self.assertIn("if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)", mobile)
 
+    def test_desktop_does_not_hide_emas_near_sibling_smas(self):
+        desktop = read_desktop()
+
+        self.assertNotIn("ema_skip_gap", desktop)
+        self.assertIn("if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)", desktop)
+        self.assertIn("if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)", desktop)
+        self.assertIn("if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)", desktop)
+
     def test_desktop_core_data_requests_are_not_history_limited(self):
         source = read_desktop() + "\n" + read_data_table()
 
