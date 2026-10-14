@@ -444,32 +444,32 @@ if should_create_levels
     line.delete(l_or30h)
     label.delete(lbl_or30h)
 
-    if show_5 and level_is_relevant_at(active_sma5_d, active_close, active_session_lod, active_session_hod)
+    if show_5
         l_sma5    := line.new(active_session_start_bar, active_sma5_d, target_index, active_sma5_d, color=col_5, width=w_5, style=get_style(style_5))
         lbl_sma5  := label.new(target_label_index, active_sma5_d, get_name("5D SMA"), color=color.new(color.black, 100), textcolor=col_5, style=label.style_label_left, tooltip=get_text("5D SMA", active_sma5_d))
-    if show_20 and level_is_relevant_at(active_sma20_d, active_close, active_session_lod, active_session_hod)
+    if show_20
         l_sma20   := line.new(active_session_start_bar, active_sma20_d, target_index, active_sma20_d, color=col_20, width=w_20, style=get_style(style_20))
         lbl_sma20 := label.new(target_label_index, active_sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", active_sma20_d))
-    if show_10 and level_is_relevant_at(active_sma10_d, active_close, active_session_lod, active_session_hod)
+    if show_10
         l_sma10   := line.new(active_session_start_bar, active_sma10_d, target_index, active_sma10_d, color=col_10, width=w_10, style=get_style(style_10))
         lbl_sma10 := label.new(target_label_index, active_sma10_d, get_name("10D SMA"), color=color.new(color.black, 100), textcolor=col_10, style=label.style_label_left, tooltip=get_text("10D SMA", active_sma10_d))
-    if show_50 and level_is_relevant_at(active_sma50_d, active_close, active_session_lod, active_session_hod)
+    if show_50
         l_sma50   := line.new(active_session_start_bar, active_sma50_d, target_index, active_sma50_d, color=col_50, width=w_50, style=get_style(style_50))
         lbl_sma50 := label.new(target_label_index, active_sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", active_sma50_d))
-    if show_150 and level_is_relevant_at(active_sma150_d, active_close, active_session_lod, active_session_hod)
+    if show_150
         l_sma150  := line.new(active_session_start_bar, active_sma150_d, target_index, active_sma150_d, color=col_150, width=w_150, style=get_style(style_150))
         lbl_sma150:= label.new(target_label_index, active_sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", active_sma150_d))
-    if show_200 and level_is_relevant_at(active_sma200_d, active_close, active_session_lod, active_session_hod)
+    if show_200
         l_sma200  := line.new(active_session_start_bar, active_sma200_d, target_index, active_sma200_d, color=col_200, width=w_200, style=get_style(style_200))
         lbl_sma200:= label.new(target_label_index, active_sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", active_sma200_d))
 
-    if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)
+    if show_ema10
         l_ema10   := line.new(active_session_start_bar, active_ema10_d, target_index, active_ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
         lbl_ema10 := label.new(target_label_index, active_ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", active_ema10_d))
-    if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)
+    if show_ema20
         l_ema20   := line.new(active_session_start_bar, active_ema20_d, target_index, active_ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
         lbl_ema20 := label.new(target_label_index, active_ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", active_ema20_d))
-    if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)
+    if show_ema50
         l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
         lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
 

@@ -228,17 +228,20 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn('show_near_intraday_levels = input.bool(false, "Intraday: Only Show Nearby/Overlapped Levels"', mobile)
         self.assertIn('show_5    = input.bool(true,  "Show 5D SMA"', mobile)
         self.assertNotIn("ema_skip_gap", mobile)
-        self.assertIn("if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)", mobile)
-        self.assertIn("if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)", mobile)
-        self.assertIn("if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)", mobile)
+        self.assertIn("if show_ema10", mobile)
+        self.assertIn("if show_ema20", mobile)
+        self.assertIn("if show_ema50", mobile)
 
-    def test_desktop_does_not_hide_emas_near_sibling_smas(self):
-        desktop = read_desktop()
-
-        self.assertNotIn("ema_skip_gap", desktop)
-        self.assertIn("if show_ema10 and level_is_relevant_at(active_ema10_d, active_close, active_session_lod, active_session_hod)", desktop)
-        self.assertIn("if show_ema20 and level_is_relevant_at(active_ema20_d, active_close, active_session_lod, active_session_hod)", desktop)
-        self.assertIn("if show_ema50 and level_is_relevant_at(active_ema50_d, active_close, active_session_lod, active_session_hod)", desktop)
+    def test_enabled_mas_are_never_hidden_by_proximity_filters(self):
+        for source in (read_desktop(), read_mobile(), read_replay()):
+            self.assertNotIn("ema_skip_gap", source)
+            for name in ("5", "10", "20", "50", "150", "200", "ema10", "ema20", "ema50"):
+                self.assertIn(f"if show_{name}", source)
+            self.assertNotIn("if show_ema10 and level_is_relevant_at", source)
+            self.assertNotIn("if show_ema20 and level_is_relevant_at", source)
+            self.assertNotIn("if show_ema50 and level_is_relevant_at", source)
+            for name in ("5", "10", "20", "50", "150", "200"):
+                self.assertNotIn(f"if show_{name} and level_is_relevant_at", source)
 
     def test_desktop_core_data_requests_are_not_history_limited(self):
         source = read_desktop() + "\n" + read_data_table()
