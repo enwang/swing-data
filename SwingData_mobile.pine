@@ -10,8 +10,6 @@ plot(na, title="Compiler Anchor", display=display.none, editable=false)
 gp_visual = "Visual Layout Settings"
 offset    = input.int(3, "Line Extension (Bars Ahead)", minval=0, group=gp_visual, display=display.none)
 label_offset = input.int(0, "Label Gap From Line End", minval=0, group=gp_visual, display=display.none)
-show_near_intraday_levels = input.bool(false, "Intraday: Only Show Nearby/Overlapped Levels", group=gp_visual, display=display.none)
-near_level_pct = input.float(3.0, "Nearby Level Distance (%)", minval=0.0, step=0.1, group=gp_visual, display=display.none, tooltip="On intraday charts, only show daily levels that today's range has touched, or levels within this % of current price/today's low. Helps keep possible U&R levels visible without showing every far-away level.")
 
 gp_sma    = "Daily Moving Averages"
 show_5    = input.bool(true,  "Show 5D SMA",   group=gp_sma, display=display.none)
@@ -237,18 +235,6 @@ clamp_to_band(float p, float anchor, float max_dist) =>
     (p - anchor) > max_dist  ? anchor + max_dist :
       (anchor - p) > max_dist ? anchor - max_dist : p
 
-level_is_relevant_at(float p, float anchor_close, float anchor_lod, float anchor_hod) =>
-    near_band = anchor_close * (near_level_pct / 100.0)
-    overlaps_today = not na(p) and not na(anchor_lod) and not na(anchor_hod) and p >= anchor_lod and p <= anchor_hod
-    near_close = not na(p) and math.abs(p - anchor_close) <= near_band
-    near_day_low = not na(p) and not na(anchor_lod) and math.abs(p - anchor_lod) <= near_band
-    near_day_high = not na(p) and not na(anchor_hod) and math.abs(p - anchor_hod) <= near_band
-    not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low or near_day_high
-
-level_is_relevant(float p) =>
-    level_is_relevant_at(p, close, session_lod, session_hod)
-
-
 // --- LABEL ANTI-OVERLAP HELPERS (horizontal stagger, parallel arrays) ---
 add_lbl(array<line> lns, array<label> lbls, array<float> prices, line ln, label lbl, float price) =>
     if not na(ln) and not na(lbl) and not na(price)
@@ -473,13 +459,13 @@ if should_create_levels
         l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
         lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
 
-    if show_h and not na(active_prev_high) and level_is_relevant_at(active_prev_high, active_close, active_session_lod, active_session_hod)
+    if show_h and not na(active_prev_high)
         l_high   := line.new(active_session_start_bar, active_prev_high, target_index, active_prev_high, color=col_h, width=w_h, style=get_style(style_h))
         lbl_high := label.new(target_label_index, active_prev_high, get_text("PD High", active_prev_high), color=color.new(color.black, 100), textcolor=col_h, style=label.style_label_left, tooltip=get_text("PD High", active_prev_high))
-    if show_l and not na(active_prev_low) and level_is_relevant_at(active_prev_low, active_close, active_session_lod, active_session_hod)
+    if show_l and not na(active_prev_low)
         l_low    := line.new(active_session_start_bar, active_prev_low, target_index, active_prev_low, color=col_l, width=w_l, style=get_style(style_l))
         lbl_low  := label.new(target_label_index, active_prev_low, get_text("PD Low", active_prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", active_prev_low))
-    if show_ppd_low_line and level_is_relevant_at(active_ppd_low, active_close, active_session_lod, active_session_hod)
+    if show_ppd_low_line
         l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low, color=col_l, width=w_l, style=get_style(style_l))
         lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text("PPD Low", active_ppd_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PPD Low", active_ppd_low))
     if show_today_low and not na(active_session_lod)
@@ -527,7 +513,7 @@ if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_
         line.set_xy2(l_today_low, target_index, active_session_lod)
         label.set_xy(lbl_today_low, target_label_index, active_session_lod)
         label.set_text(lbl_today_low, get_text("Today Low", active_session_lod))
-    if show_or5 and not na(active_or5_high) and level_is_relevant_at(active_or5_high, active_close, active_session_lod, active_session_hod)
+    if show_or5 and not na(active_or5_high)
         if na(l_or5h)
             l_or5h   := line.new(active_session_start_bar, active_or5_high, target_index, active_or5_high, color=col_or5, width=w_or5, style=get_style(style_or5))
             lbl_or5h := label.new(target_label_index, active_or5_high, "5m", color=color.new(color.black, 100), textcolor=col_or5, style=label.style_label_left, tooltip=get_text("5m OR High", active_or5_high))
@@ -538,7 +524,7 @@ if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_
             // keep label text in sync with the (possibly updated) OR high value
             label.set_text(lbl_or5h, "5m")
 
-    if show_or30 and not na(active_or30_high) and level_is_relevant_at(active_or30_high, active_close, active_session_lod, active_session_hod)
+    if show_or30 and not na(active_or30_high)
         if na(l_or30h)
             l_or30h   := line.new(active_session_start_bar, active_or30_high, target_index, active_or30_high, color=col_or30, width=w_or30, style=get_style(style_or30))
             lbl_or30h := label.new(target_label_index, active_or30_high, "30m", color=color.new(color.black, 100), textcolor=col_or30, style=label.style_label_left, tooltip=get_text("30m OR High", active_or30_high))

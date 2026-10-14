@@ -225,7 +225,6 @@ class SwingDataStaticTests(unittest.TestCase):
     def test_mobile_enables_all_moving_average_labels_by_default(self):
         mobile = read_mobile()
 
-        self.assertIn('show_near_intraday_levels = input.bool(false, "Intraday: Only Show Nearby/Overlapped Levels"', mobile)
         self.assertIn('show_5    = input.bool(true,  "Show 5D SMA"', mobile)
         self.assertNotIn("ema_skip_gap", mobile)
         self.assertIn("if show_ema10", mobile)
@@ -292,11 +291,11 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn("target_base_index = timeframe.isintraday and not na(active_rth_end_bar) ? active_rth_end_bar : active_bar_index", desktop)
         self.assertIn("target_index = target_base_index + offset", desktop)
 
-    def test_desktop_nearby_filter_keeps_overhead_levels_near_hod(self):
-        desktop = read_desktop()
-
-        self.assertIn("near_day_high = not na(p) and not na(anchor_hod) and math.abs(p - anchor_hod) <= near_band", desktop)
-        self.assertIn("not show_near_intraday_levels or not timeframe.isintraday or overlaps_today or near_close or near_day_low or near_day_high", desktop)
+    def test_no_swing_data_line_uses_proximity_filtering(self):
+        for source in (read_desktop(), read_mobile(), read_replay()):
+            self.assertNotIn("show_near_intraday_levels", source)
+            self.assertNotIn("near_level_pct", source)
+            self.assertNotIn("level_is_relevant", source)
 
     def test_desktop_has_no_today_divider_logic(self):
         desktop = read_desktop()
