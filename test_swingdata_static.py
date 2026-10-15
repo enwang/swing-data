@@ -222,10 +222,12 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn('offset    = input.int(3, "Line Extension (Bars Ahead)"', mobile)
         self.assertIn('label_offset = input.int(0, "Label Gap From Line End"', mobile)
 
-    def test_mobile_enables_all_moving_average_labels_by_default(self):
+    def test_mobile_moving_average_label_defaults(self):
         mobile = read_mobile()
 
-        self.assertIn('show_5    = input.bool(true,  "Show 5D SMA"', mobile)
+        # 5D SMA defaults OFF on mobile too (owner decision, Oct 2026) —
+        # matching desktop and replay; the other MAs keep their defaults.
+        self.assertIn('show_5    = input.bool(false, "Show 5D SMA"', mobile)
         self.assertNotIn("ema_skip_gap", mobile)
         self.assertIn("if show_ema10", mobile)
         self.assertIn("if show_ema20", mobile)
