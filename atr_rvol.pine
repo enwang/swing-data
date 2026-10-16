@@ -240,3 +240,11 @@ if barstate.islast
 
     table.cell(bottom_tbl, 1, 2, "ATR%",     text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
     table.cell(bottom_tbl, 2, 2, str_atr_pct, text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_right)
+
+// TEMP DEBUG (Data Window only, remove after diagnosis): intermediate RVOL values.
+plot(volume, "DBG volume", display=display.data_window)
+plot(chart_vol_ma, "DBG sma50prev", display=display.data_window)
+plot(proj_today_cum, "DBG today_cum", display=display.data_window)
+plot(proj_avg_frac, "DBG avg_frac", display=display.data_window)
+plot(daily_rvol_proj, "DBG proj", display=display.data_window)
+plot(daily_rvol, "DBG raw", display=display.data_window)
