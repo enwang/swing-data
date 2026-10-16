@@ -292,7 +292,11 @@ class SwingDataStaticTests(unittest.TestCase):
             # daily charts, falling back to the raw value when no
             # projection is available — no separate Proj row.
             self.assertIn("lower_volumes = request.security_lower_tf(syminfo.tickerid, lower_tf, volume)", table)
-            self.assertIn("rvol_proj_slots = rvol_session_minutes / rvol_proj_slot_minutes", table)
+            self.assertIn("lower_premarket = request.security_lower_tf(syminfo.tickerid, lower_tf, session.ispremarket)", table)
+            self.assertIn("rvol_proj_window_minutes = 720", table)
+            self.assertIn("rvol_proj_slots = rvol_proj_window_minutes / rvol_proj_slot_minutes", table)
+            self.assertIn('window_start_ts = timestamp("America/New_York"', table)
+            self.assertIn(", 4, 0)", table)
             self.assertIn("var rvol_frac_by_slot = array.new_float(rvol_proj_slots * (rvol_intraday_days + 1), na)", table)
             self.assertIn("if timeframe.isdaily", table)
             self.assertIn("daily_rvol_proj = timeframe.isdaily", table)
