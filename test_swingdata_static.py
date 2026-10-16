@@ -300,7 +300,13 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertIn("var rvol_frac_by_slot = array.new_float(rvol_proj_slots * (rvol_intraday_days + 1), na)", table)
             self.assertIn("if timeframe.isdaily", table)
             self.assertIn("daily_rvol_proj = timeframe.isdaily", table)
-            self.assertIn("(proj_today_cum / proj_avg_frac) / chart_vol_ma * 100", table)
+            # The projection rescales by the chart feed's share of
+            # consolidated volume (Cboe One 1-minute bars carry only a
+            # fraction of the daily bar's volume — PENG 2026-10-15:
+            # 644K of 6.92M), measured per day against the daily bars.
+            self.assertIn("var rvol_share_by_day = array.new_float(rvol_intraday_days + 1, na)", table)
+            self.assertIn("array.set(rvol_share_by_day, rvol_intraday_days, run_cum / volume)", table)
+            self.assertIn("(proj_today_cum / proj_avg_frac) / (chart_vol_ma * proj_share_avg) * 100", table)
             self.assertIn("display_rvol = timeframe.isdaily and not na(daily_rvol_proj) ? daily_rvol_proj : calc_rvol", table)
             self.assertIn('str_rvol = str.tostring(display_rvol, "0") + "%"', table)
             self.assertNotIn("str_rvol_proj", table)

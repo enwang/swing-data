@@ -125,10 +125,24 @@ rvol_proj_window_minutes = 720
 rvol_proj_slots = rvol_proj_window_minutes / rvol_proj_slot_minutes
 var rvol_frac_by_slot = array.new_float(rvol_proj_slots * (rvol_intraday_days + 1), na)
 
+// The lower-tf bars come from the chart feed (e.g. Cboe One), whose volume is
+// only a share of the consolidated daily volume that the 50-day average uses
+// (verified on PENG 2026-10-15: 390 RTH 1-minute bars summed to 644K vs the
+// daily bar's 6.92M). Store each day's feed share (window volume from the
+// lower-tf bars / that day's full chart volume) so the projection below can
+// rescale its feed-volume estimate back into consolidated terms. On a full
+// consolidated feed the share is ~1 and the rescale is a no-op.
+var rvol_share_by_day = array.new_float(rvol_intraday_days + 1, na)
+
 float proj_today_cum = na
 int proj_today_slot = na
 float proj_avg_frac = na
+float proj_share_avg = na
 if timeframe.isdaily
+    for d = 0 to rvol_intraday_days - 1
+        array.set(rvol_share_by_day, d, array.get(rvol_share_by_day, d + 1))
+    array.set(rvol_share_by_day, rvol_intraday_days, na)
+
     // Shift stored days: block d holds one past session's fraction curve
     // (cumulative share of the day's pre-market + RTH volume per 5-minute
     // checkpoint); the last block is rewritten for the current day below.
@@ -159,6 +173,8 @@ if timeframe.isdaily
             for s = 0 to rvol_proj_slots - 1
                 cum_at_slot = array.get(rvol_frac_by_slot, rvol_intraday_days * rvol_proj_slots + s)
                 array.set(rvol_frac_by_slot, rvol_intraday_days * rvol_proj_slots + s, na(cum_at_slot) ? na : cum_at_slot / run_cum)
+            if volume > 0
+                array.set(rvol_share_by_day, rvol_intraday_days, run_cum / volume)
 
     if not na(proj_today_slot)
         float frac_sum = 0.0
@@ -170,7 +186,16 @@ if timeframe.isdaily
                 frac_count += 1
         proj_avg_frac := frac_count > 0 ? frac_sum / frac_count : na
 
-daily_rvol_proj = timeframe.isdaily and not na(proj_today_cum) and not na(proj_avg_frac) and proj_avg_frac > 0 and chart_vol_ma > 0 ? (proj_today_cum / proj_avg_frac) / chart_vol_ma * 100 : na
+    float share_sum = 0.0
+    int share_count = 0
+    for d = 0 to rvol_intraday_days - 1
+        past_share = array.get(rvol_share_by_day, d)
+        if not na(past_share) and past_share > 0
+            share_sum += past_share
+            share_count += 1
+    proj_share_avg := share_count > 0 ? share_sum / share_count : na
+
+daily_rvol_proj = timeframe.isdaily and not na(proj_today_cum) and not na(proj_avg_frac) and proj_avg_frac > 0 and not na(proj_share_avg) and proj_share_avg > 0 and chart_vol_ma > 0 ? (proj_today_cum / proj_avg_frac) / (chart_vol_ma * proj_share_avg) * 100 : na
 
 calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol
 // Single displayed RVOL: on daily charts show the time-of-day projection
