@@ -70,8 +70,10 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertIn("(ta.sma(close[1], length - 1) * (length - 1) + open) / length", source)
             self.assertIn("previous_ema = ta.ema(close, length)[1]", source)
             self.assertIn("previous_ema + alpha * (open - previous_ema)", source)
-            for length in (5, 50, 150, 200):
+            for length in (50, 150, 200):
                 self.assertIn(f"daily_sma_with_open({length})", source)
+            # The 5D SMA was removed entirely (owner decision, Oct 2026).
+            self.assertNotIn("daily_sma_with_open(5)", source)
             self.assertIn("daily_ema_with_open(50)", source)
             for length in (10, 20):
                 self.assertIn(f"ta.sma(close, {length})", source)
@@ -196,7 +198,7 @@ class SwingDataStaticTests(unittest.TestCase):
     def test_desktop_daily_ma_security_requests_are_batched(self):
         desktop = read_desktop()
 
-        self.assertIn("[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security", desktop)
+        self.assertIn("[sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security", desktop)
         self.assertEqual(desktop.count("request.security(syminfo.tickerid, \"D\""), 1)
 
     def test_20d_sma_is_light_orange_in_both_fast_versions(self):
@@ -225,9 +227,10 @@ class SwingDataStaticTests(unittest.TestCase):
     def test_mobile_moving_average_label_defaults(self):
         mobile = read_mobile()
 
-        # 5D SMA defaults OFF on mobile too (owner decision, Oct 2026) —
-        # matching desktop and replay; the other MAs keep their defaults.
-        self.assertIn('show_5    = input.bool(false, "Show 5D SMA"', mobile)
+        # The 5D SMA was removed entirely (owner decision, Oct 2026):
+        # no input, no line, no label in any Swing Data variant.
+        self.assertNotIn("Show 5D SMA", mobile)
+        self.assertNotIn("sma5_d", mobile)
         self.assertNotIn("ema_skip_gap", mobile)
         self.assertIn("if show_ema10", mobile)
         self.assertIn("if show_ema20", mobile)
@@ -236,7 +239,7 @@ class SwingDataStaticTests(unittest.TestCase):
     def test_enabled_mas_are_never_hidden_by_proximity_filters(self):
         for source in (read_desktop(), read_mobile(), read_replay()):
             self.assertNotIn("ema_skip_gap", source)
-            for name in ("5", "10", "20", "50", "150", "200", "ema10", "ema20", "ema50"):
+            for name in ("10", "20", "50", "150", "200", "ema10", "ema20", "ema50"):
                 self.assertIn(f"if show_{name}", source)
             self.assertNotIn("if show_ema10 and level_is_relevant_at", source)
             self.assertNotIn("if show_ema20 and level_is_relevant_at", source)

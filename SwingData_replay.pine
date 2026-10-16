@@ -13,11 +13,6 @@ label_offset = input.int(1, "Label Gap From Line End", minval=0, group=gp_visual
 use_visible_replay = input.bool(true, "Use Last Complete Visible RTH Day", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values use the latest full regular-session day visible on screen. A partially visible next day is ignored.")
 
 gp_sma    = "Daily Moving Averages"
-show_5    = input.bool(false, "Show 5D SMA",   group=gp_sma, display=display.none)
-col_5     = input.color(color.blue, "",        group=gp_sma, display=display.none)
-w_5       = input.int(1, "Width", minval=1, maxval=5, group=gp_sma, display=display.none)
-style_5   = input.string("Solid", "Style", options=["Solid", "Dashed", "Dotted"], group=gp_sma, display=display.none)
-
 // 10D SMA defaults to ON; user added it to their daily chart in light red.
 show_10   = input.bool(true,  "Show 10D SMA", group=gp_sma, display=display.none)
 col_10    = input.color(#ff9999, "",          group=gp_sma, display=display.none)
@@ -143,7 +138,7 @@ daily_ema_with_open(int length) =>
     previous_ema + alpha * (open - previous_ema)
 
 // Match the fast indicators: live 10D/20D MAs and open-stabilized longer MAs.
-[sma5_d, sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [daily_sma_with_open(5), ta.sma(close, 10), ta.sma(close, 20), daily_sma_with_open(50), daily_sma_with_open(150), daily_sma_with_open(200), ta.ema(close, 10), ta.ema(close, 20), daily_ema_with_open(50)], lookahead=barmerge.lookahead_on)
+[sma10_d, sma20_d, sma50_d, sma150_d, sma200_d, ema10_d, ema20_d, ema50_d] = request.security(syminfo.tickerid, "D", [ta.sma(close, 10), ta.sma(close, 20), daily_sma_with_open(50), daily_sma_with_open(150), daily_sma_with_open(200), ta.ema(close, 10), ta.ema(close, 20), daily_ema_with_open(50)], lookahead=barmerge.lookahead_on)
 
 time_elapsed_ms = time - session_start_time
 
@@ -190,7 +185,6 @@ if timeframe.isintraday and timeframe.multiplier < 30
         or30_low  := na(or30_low)  ? low  : math.min(or30_low, low)
 
 // --- LINES & LABELS ---
-var line l_sma5   = na
 var line l_sma10  = na
 var line l_sma20  = na
 var line l_sma50  = na
@@ -206,7 +200,6 @@ var line l_today_low = na
 var line l_or5h   = na
 var line l_or30h  = na
 
-var label lbl_sma5   = na
 var label lbl_sma10  = na
 var label lbl_sma20  = na
 var label lbl_sma50  = na
@@ -288,7 +281,6 @@ var int anchor_session_start_time = na
 var float anchor_close = na
 var float anchor_session_hod = na
 var float anchor_session_lod = na
-var float anchor_sma5_d = na
 var float anchor_sma10_d = na
 var float anchor_sma20_d = na
 var float anchor_sma50_d = na
@@ -309,7 +301,6 @@ var int latest_session_start_time = na
 var float latest_close = na
 var float latest_session_hod = na
 var float latest_session_lod = na
-var float latest_sma5_d = na
 var float latest_sma10_d = na
 var float latest_sma20_d = na
 var float latest_sma50_d = na
@@ -334,7 +325,6 @@ if is_visible_rth_day_bar
     latest_close := close
     latest_session_hod := session_hod
     latest_session_lod := session_lod
-    latest_sma5_d := sma5_d
     latest_sma10_d := sma10_d
     latest_sma20_d := sma20_d
     latest_sma50_d := sma50_d
@@ -356,7 +346,6 @@ if is_complete_visible_rth_day
     anchor_close := close
     anchor_session_hod := session_hod
     anchor_session_lod := session_lod
-    anchor_sma5_d := sma5_d
     anchor_sma10_d := sma10_d
     anchor_sma20_d := sma20_d
     anchor_sma50_d := sma50_d
@@ -387,7 +376,6 @@ active_bar_index = use_latest_visible_rth_day ? latest_bar_index : use_complete_
 active_close = use_latest_visible_rth_day ? latest_close : use_complete_visible_rth_day ? anchor_close : close
 active_session_hod = use_latest_visible_rth_day ? latest_session_hod : use_complete_visible_rth_day ? anchor_session_hod : session_hod
 active_session_lod = use_latest_visible_rth_day ? latest_session_lod : use_complete_visible_rth_day ? anchor_session_lod : session_lod
-active_sma5_d = use_latest_visible_rth_day ? latest_sma5_d : use_complete_visible_rth_day ? anchor_sma5_d : sma5_d
 active_sma10_d = use_latest_visible_rth_day ? latest_sma10_d : use_complete_visible_rth_day ? anchor_sma10_d : sma10_d
 active_sma20_d = use_latest_visible_rth_day ? latest_sma20_d : use_complete_visible_rth_day ? anchor_sma20_d : sma20_d
 active_sma50_d = use_latest_visible_rth_day ? latest_sma50_d : use_complete_visible_rth_day ? anchor_sma50_d : sma50_d
@@ -413,8 +401,6 @@ should_create_levels = timeframe.isintraday and not market_is_active and (not us
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
-    line.delete(l_sma5)
-    label.delete(lbl_sma5)
     line.delete(l_sma10)
     label.delete(lbl_sma10)
     line.delete(l_sma20)
@@ -444,9 +430,6 @@ if should_create_levels
     line.delete(l_or30h)
     label.delete(lbl_or30h)
 
-    if show_5
-        l_sma5    := line.new(active_session_start_bar, active_sma5_d, target_index, active_sma5_d, color=col_5, width=w_5, style=get_style(style_5))
-        lbl_sma5  := label.new(target_label_index, active_sma5_d, get_name("5D SMA"), color=color.new(color.black, 100), textcolor=col_5, style=label.style_label_left, tooltip=get_text("5D SMA", active_sma5_d))
     if show_20
         l_sma20   := line.new(active_session_start_bar, active_sma20_d, target_index, active_sma20_d, color=col_20, width=w_20, style=get_style(style_20))
         lbl_sma20 := label.new(target_label_index, active_sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", active_sma20_d))
@@ -487,9 +470,6 @@ if should_create_levels
         lbl_today_low := label.new(target_label_index, active_session_lod, get_text("Today Low", active_session_lod), color=color.new(color.black, 100), textcolor=col_today_low, style=label.style_label_left, tooltip=get_text("Today Low", active_session_lod))
 
 if timeframe.isintraday and not market_is_active and (not use_visible_replay or has_replay_anchor) and not na(active_session_start_bar) and is_data_anchor_bar
-    if show_5 and not na(l_sma5)
-        line.set_x2(l_sma5, target_index)
-        label.set_x(lbl_sma5, target_label_index)
     if show_10 and not na(l_sma10)
         line.set_x2(l_sma10, target_index)
         label.set_x(lbl_sma10, target_label_index)
@@ -555,7 +535,6 @@ if timeframe.isintraday and not market_is_active and (not use_visible_replay or 
     // Keep each label at its real line price, then push only the x-position right
     // when nearby labels would collide.
     if is_data_anchor_bar
-        sma5_y   = active_sma5_d
         sma10_y  = active_sma10_d
         sma20_y  = active_sma20_d
         sma50_y  = active_sma50_d
@@ -565,8 +544,6 @@ if timeframe.isintraday and not market_is_active and (not use_visible_replay or 
         ema20_y  = active_ema20_d
         ema50_y  = active_ema50_d
 
-        if not na(lbl_sma5)
-            label.set_y(lbl_sma5, sma5_y)
         if not na(lbl_sma10)
             label.set_y(lbl_sma10, sma10_y)
         if not na(lbl_sma20)
@@ -599,7 +576,6 @@ if timeframe.isintraday and not market_is_active and (not use_visible_replay or 
             add_lbl(lns_arr, lbls_arr, prices_arr, l_ema20,   lbl_ema20,   ema20_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_sma10,   lbl_sma10,   sma10_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_ema10,   lbl_ema10,   ema10_y)
-            add_lbl(lns_arr, lbls_arr, prices_arr, l_sma5,    lbl_sma5,    sma5_y)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_high,    lbl_high,    active_prev_high)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_or5h,    lbl_or5h,    active_or5_high)
             add_lbl(lns_arr, lbls_arr, prices_arr, l_or30h,   lbl_or30h,   active_or30_high)
