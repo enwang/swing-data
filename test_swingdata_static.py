@@ -307,7 +307,9 @@ class SwingDataStaticTests(unittest.TestCase):
             self.assertIn("var rvol_share_by_day = array.new_float(rvol_intraday_days + 1, na)", table)
             self.assertIn("array.set(rvol_share_by_day, rvol_intraday_days, run_cum / volume)", table)
             self.assertIn("(proj_today_cum / proj_avg_frac) / (chart_vol_ma * proj_share_avg) * 100", table)
-            self.assertIn("display_rvol = timeframe.isdaily and not na(daily_rvol_proj) ? daily_rvol_proj : calc_rvol", table)
+            self.assertIn("prev_day_rvol = timeframe.isdaily", table)
+            self.assertIn("premarket_fallback = timeframe.isdaily and na(daily_rvol_proj) and na(proj_today_cum)", table)
+            self.assertIn("display_rvol = timeframe.isdaily and not na(daily_rvol_proj) ? daily_rvol_proj : premarket_fallback ? prev_day_rvol : calc_rvol", table)
             self.assertIn('str_rvol = str.tostring(display_rvol, "0") + "%"', table)
             self.assertNotIn("str_rvol_proj", table)
 
