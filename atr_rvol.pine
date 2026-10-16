@@ -241,10 +241,50 @@ if barstate.islast
     table.cell(bottom_tbl, 1, 2, "ATR%",     text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_left)
     table.cell(bottom_tbl, 2, 2, str_atr_pct, text_color=tbl_text_col,   text_size=table_size_sel, text_halign=text.align_right)
 
-// TEMP DEBUG (Data Window only, remove after diagnosis): intermediate RVOL values.
+// TEMP DEBUG round 2 (Data Window only, remove after diagnosis): where does the
+// projection loop lose volume? Split the lower-tf sum by session flag and window.
+float dbg_sum_all = na
+float dbg_sum_mkt = na
+float dbg_sum_pre = na
+float dbg_sum_win = na
+int dbg_n_mkt = na
+int dbg_n_pre = na
+float dbg_first_t = na
+float dbg_last_t = na
+if timeframe.isdaily and array.size(lower_volumes) > 0
+    dbg_sum_all := 0.0
+    dbg_sum_mkt := 0.0
+    dbg_sum_pre := 0.0
+    dbg_sum_win := 0.0
+    dbg_n_mkt := 0
+    dbg_n_pre := 0
+    dbg_first_t := array.get(lower_times, 0)
+    dbg_last_t := array.get(lower_times, array.size(lower_times) - 1)
+    dbg_ws = timestamp("America/New_York", year(time, "America/New_York"), month(time, "America/New_York"), dayofmonth(time, "America/New_York"), 4, 0)
+    for i = 0 to array.size(lower_volumes) - 1
+        dbg_v = array.get(lower_volumes, i)
+        dbg_sum_all += dbg_v
+        dbg_em = int(math.floor((array.get(lower_times, i) - dbg_ws) / 60000))
+        if dbg_em >= 0 and dbg_em < rvol_proj_window_minutes
+            dbg_sum_win += dbg_v
+        if array.get(lower_market, i)
+            dbg_sum_mkt += dbg_v
+            dbg_n_mkt += 1
+        if array.get(lower_premarket, i)
+            dbg_sum_pre += dbg_v
+            dbg_n_pre += 1
 plot(volume, "DBG volume", display=display.data_window)
 plot(chart_vol_ma, "DBG sma50prev", display=display.data_window)
 plot(proj_today_cum, "DBG today_cum", display=display.data_window)
 plot(proj_avg_frac, "DBG avg_frac", display=display.data_window)
 plot(daily_rvol_proj, "DBG proj", display=display.data_window)
 plot(daily_rvol, "DBG raw", display=display.data_window)
+plot(array.size(lower_volumes), "DBG n_bars", display=display.data_window)
+plot(dbg_sum_all, "DBG sum_all", display=display.data_window)
+plot(dbg_sum_mkt, "DBG sum_mkt", display=display.data_window)
+plot(dbg_sum_pre, "DBG sum_pre", display=display.data_window)
+plot(dbg_sum_win, "DBG sum_win", display=display.data_window)
+plot(dbg_n_mkt, "DBG n_mkt", display=display.data_window)
+plot(dbg_n_pre, "DBG n_pre", display=display.data_window)
+plot(dbg_first_t, "DBG first_t", display=display.data_window)
+plot(dbg_last_t, "DBG last_t", display=display.data_window)
