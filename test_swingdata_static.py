@@ -276,30 +276,35 @@ class SwingDataStaticTests(unittest.TestCase):
 
         self.assertIn('indicator("ATR RVOL Mobile", overlay=true)', table)
         self.assertIn("tbl_size  = input.string('Tiny'", table)
-        self.assertIn("var table mobile_tbl = table.new(position.bottom_right, 3, 6", table)
+        self.assertIn("var table mobile_tbl = table.new(position.bottom_right, 3, 5", table)
         self.assertIn('table.cell(mobile_tbl, 1, 0, "rVOL"', table)
-        self.assertIn('table.cell(mobile_tbl, 1, 1, "rVOL Proj"', table)
-        self.assertIn('table.cell(mobile_tbl, 1, 2, "LoD%"', table)
-        self.assertIn('table.cell(mobile_tbl, 1, 3, "Multiple"', table)
-        self.assertIn('table.cell(mobile_tbl, 1, 4, "Gain%"', table)
-        self.assertIn('table.cell(mobile_tbl, 1, 5, "ATR%"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 1, "LoD%"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 2, "Multiple"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 3, "Gain%"', table)
+        self.assertIn('table.cell(mobile_tbl, 1, 4, "ATR%"', table)
         self.assertIn("calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol", table)
 
     def test_data_tables_project_daily_rvol_by_time_of_day(self):
         for table in (read_data_table(), read_mobile_data_table()):
             # Projection is built from 1-minute RTH volume curves and only
-            # applies on daily charts; the raw daily RVOL stays as-is.
+            # applies on daily charts. Single display (owner decision,
+            # Oct 2026): the one Rel Vol row shows the projected value on
+            # daily charts, falling back to the raw value when no
+            # projection is available — no separate Proj row.
             self.assertIn("lower_volumes = request.security_lower_tf(syminfo.tickerid, lower_tf, volume)", table)
             self.assertIn("rvol_proj_slots = rvol_session_minutes / rvol_proj_slot_minutes", table)
             self.assertIn("var rvol_frac_by_slot = array.new_float(rvol_proj_slots * (rvol_intraday_days + 1), na)", table)
             self.assertIn("if timeframe.isdaily", table)
             self.assertIn("daily_rvol_proj = timeframe.isdaily", table)
             self.assertIn("(proj_today_cum / proj_avg_frac) / chart_vol_ma * 100", table)
-            self.assertIn('str_rvol_proj = na(daily_rvol_proj) ? "" : str.tostring(daily_rvol_proj, "0") + "%"', table)
+            self.assertIn("display_rvol = timeframe.isdaily and not na(daily_rvol_proj) ? daily_rvol_proj : calc_rvol", table)
+            self.assertIn('str_rvol = str.tostring(display_rvol, "0") + "%"', table)
+            self.assertNotIn("str_rvol_proj", table)
 
         desktop = read_data_table()
-        self.assertIn("var table top_tbl = table.new(position.top_right, 3, 5", desktop)
-        self.assertIn('table.cell(top_tbl, 1, 2, "Rel Vol Proj"', desktop)
+        self.assertIn("var table top_tbl = table.new(position.top_right, 3, 4", desktop)
+        self.assertNotIn("Rel Vol Proj", desktop)
+        self.assertNotIn("rVOL Proj", read_mobile_data_table())
 
     def test_desktop_line_length_is_capped_to_rth_bars(self):
         desktop = read_desktop()

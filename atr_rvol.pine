@@ -169,6 +169,10 @@ if timeframe.isdaily
 daily_rvol_proj = timeframe.isdaily and not na(proj_today_cum) and not na(proj_avg_frac) and proj_avg_frac > 0 and chart_vol_ma > 0 ? (proj_today_cum / proj_avg_frac) / chart_vol_ma * 100 : na
 
 calc_rvol = timeframe.isintraday ? last_intraday_rvol * 100 : daily_rvol
+// Single displayed RVOL: on daily charts show the time-of-day projection
+// (falling back to the raw value when no projection is available, e.g.
+// pre-market or too little intraday history).
+display_rvol = timeframe.isdaily and not na(daily_rvol_proj) ? daily_rvol_proj : calc_rvol
 lodd_close = timeframe.isintraday ? close : chart_close
 calc_lodd = chart_atr > 0 ? ((lodd_close - chart_lod) / chart_atr) * 100 : na
 calc_atr_pct = chart_close > 0 ? (chart_atr / chart_close) * 100 : na
@@ -186,19 +190,17 @@ table_size_sel = switch tbl_size
 
 // Fully transparent background to match the plain-text corner overlay.
 // Column 0 is a thin empty padding column so the leftmost text is not clipped.
-var table top_tbl = table.new(position.top_right, 3, 5, bgcolor=color.new(color.black, 100))
+var table top_tbl = table.new(position.top_right, 3, 4, bgcolor=color.new(color.black, 100))
 var table bottom_tbl = table.new(position.bottom_right, 3, 3, bgcolor=color.new(color.black, 100))
 
 if barstate.islast
     has_lod = (not timeframe.isintraday or session_lod_ready) and not na(chart_lod) and not na(calc_lodd)
-    color_rvol = calc_rvol > 50.0 ? tbl_text_col : tbl_extended_col
-    color_rvol_proj = daily_rvol_proj > 50.0 ? tbl_text_col : tbl_extended_col
+    color_rvol = display_rvol > 50.0 ? tbl_text_col : tbl_extended_col
     color_lodd = has_lod and calc_lodd > 50.0 ? tbl_extended_col : tbl_text_col
     color_gain = calc_gain_from_ma >= 0.0 ? tbl_text_col : tbl_extended_col
     color_atr_mult = is_atr_extended ? tbl_extended_col : tbl_text_col
 
-    str_rvol = str.tostring(calc_rvol, "0") + "%"
-    str_rvol_proj = na(daily_rvol_proj) ? "" : str.tostring(daily_rvol_proj, "0") + "%"
+    str_rvol = str.tostring(display_rvol, "0") + "%"
     str_lodd = has_lod ? str.tostring(calc_lodd, "0") + "%" : ""
     str_lodp = has_lod ? str.tostring(chart_lod, "#.##") : ""
     str_atr_mult = str.tostring(calc_atr_mult_from_ma, "0.00")
@@ -212,19 +214,15 @@ if barstate.islast
     table.cell(top_tbl, 0, 1, " ", text_size=table_size_sel)
     table.cell(top_tbl, 0, 2, " ", text_size=table_size_sel)
     table.cell(top_tbl, 0, 3, " ", text_size=table_size_sel)
-    table.cell(top_tbl, 0, 4, " ", text_size=table_size_sel)
 
     table.cell(top_tbl, 1, 1, "Rel Vol",      text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
     table.cell(top_tbl, 2, 1, str_rvol,        text_color=color_rvol,   text_size=table_size_sel, text_halign=text.align_right)
 
-    table.cell(top_tbl, 1, 2, "Rel Vol Proj", text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
-    table.cell(top_tbl, 2, 2, str_rvol_proj,   text_color=color_rvol_proj, text_size=table_size_sel, text_halign=text.align_right)
+    table.cell(top_tbl, 1, 2, "LoD Distance", text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(top_tbl, 2, 2, str_lodd,        text_color=color_lodd,   text_size=table_size_sel, text_halign=text.align_right)
 
-    table.cell(top_tbl, 1, 3, "LoD Distance", text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
-    table.cell(top_tbl, 2, 3, str_lodd,        text_color=color_lodd,   text_size=table_size_sel, text_halign=text.align_right)
-
-    table.cell(top_tbl, 1, 4, "LoD Price",    text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
-    table.cell(top_tbl, 2, 4, str_lodp,        text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_right)
+    table.cell(top_tbl, 1, 3, "LoD Price",    text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_left)
+    table.cell(top_tbl, 2, 3, str_lodp,        text_color=tbl_text_col, text_size=table_size_sel, text_halign=text.align_right)
 
     table.cell(bottom_tbl, 0, 0, " ", text_size=table_size_sel)
     table.cell(bottom_tbl, 0, 1, " ", text_size=table_size_sel)
