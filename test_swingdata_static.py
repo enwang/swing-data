@@ -154,8 +154,9 @@ class SwingDataStaticTests(unittest.TestCase):
         self.assertIn('current_rth_start = timestamp("America/New_York", year(timenow, "America/New_York")', replay)
         self.assertIn('current_rth_end = timestamp("America/New_York", year(timenow, "America/New_York")', replay)
         self.assertIn("market_is_active = timenow >= current_rth_start and timenow < current_rth_end and last_bar_time >= current_rth_start", replay)
-        self.assertIn("should_create_levels = timeframe.isintraday and not market_is_active", replay)
-        self.assertIn("if timeframe.isintraday and not market_is_active", replay)
+        self.assertIn("should_create_levels = timeframe.isintraday and (not hide_during_rth or not market_is_active)", replay)
+        self.assertIn("if timeframe.isintraday and (not hide_during_rth or not market_is_active)", replay)
+        self.assertIn('hide_during_rth = input.bool(true, "Hide Levels While Market Is Open"', replay)
 
         self.assertNotIn("use_visible_replay", desktop)
         self.assertNotIn("chart.right_visible_bar_time", desktop)

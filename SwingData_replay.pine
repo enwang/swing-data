@@ -11,6 +11,7 @@ gp_visual = "Visual Layout Settings"
 offset    = input.int(6, "Line Extension (Bars Ahead)", minval=0, group=gp_visual, display=display.none)
 label_offset = input.int(1, "Label Gap From Line End", minval=0, group=gp_visual, display=display.none)
 use_visible_replay = input.bool(true, "Use Last Complete Visible RTH Day", group=gp_visual, display=display.none, tooltip="When enabled, labels, lines, and table values use the latest full regular-session day visible on screen. A partially visible next day is ignored.")
+hide_during_rth = input.bool(true, "Hide Levels While Market Is Open", group=gp_visual, display=display.none, tooltip="When enabled (default), the levels are hidden while today's regular session (9:30 AM - 4:00 PM ET) is live. Turn it off to keep the anchored day's levels on screen during market hours.")
 
 gp_sma    = "Daily Moving Averages"
 // 10D SMA defaults to ON; user added it to their daily chart in light red.
@@ -397,7 +398,7 @@ target_label_index = target_index + label_offset
 current_rth_start = timestamp("America/New_York", year(timenow, "America/New_York"), month(timenow, "America/New_York"), dayofmonth(timenow, "America/New_York"), 9, 30)
 current_rth_end = timestamp("America/New_York", year(timenow, "America/New_York"), month(timenow, "America/New_York"), dayofmonth(timenow, "America/New_York"), 16, 0)
 market_is_active = timenow >= current_rth_start and timenow < current_rth_end and last_bar_time >= current_rth_start
-should_create_levels = timeframe.isintraday and not market_is_active and (not use_visible_replay or has_replay_anchor) and not na(active_session_start_bar) and is_data_anchor_bar
+should_create_levels = timeframe.isintraday and (not hide_during_rth or not market_is_active) and (not use_visible_replay or has_replay_anchor) and not na(active_session_start_bar) and is_data_anchor_bar
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
@@ -469,7 +470,7 @@ if should_create_levels
         l_today_low   := line.new(active_session_start_bar, active_session_lod, target_index, active_session_lod, color=col_today_low, width=w_today_low, style=get_style(style_today_low))
         lbl_today_low := label.new(target_label_index, active_session_lod, get_text("Today Low", active_session_lod), color=color.new(color.black, 100), textcolor=col_today_low, style=label.style_label_left, tooltip=get_text("Today Low", active_session_lod))
 
-if timeframe.isintraday and not market_is_active and (not use_visible_replay or has_replay_anchor) and not na(active_session_start_bar) and is_data_anchor_bar
+if timeframe.isintraday and (not hide_during_rth or not market_is_active) and (not use_visible_replay or has_replay_anchor) and not na(active_session_start_bar) and is_data_anchor_bar
     if show_10 and not na(l_sma10)
         line.set_x2(l_sma10, target_index)
         label.set_x(lbl_sma10, target_label_index)
