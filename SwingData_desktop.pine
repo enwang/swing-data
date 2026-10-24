@@ -387,73 +387,184 @@ should_create_levels = timeframe.isintraday and not na(active_session_start_bar)
 
 // --- LINE/LABEL DRAWING (intraday charts only) ---
 if should_create_levels
-    line.delete(l_sma10)
-    label.delete(lbl_sma10)
-    line.delete(l_sma20)
-    label.delete(lbl_sma20)
-    line.delete(l_sma50)
-    label.delete(lbl_sma50)
-    line.delete(l_sma150)
-    label.delete(lbl_sma150)
-    line.delete(l_sma200)
-    label.delete(lbl_sma200)
-    line.delete(l_ema10)
-    label.delete(lbl_ema10)
-    line.delete(l_ema20)
-    label.delete(lbl_ema20)
-    line.delete(l_ema50)
-    label.delete(lbl_ema50)
-    line.delete(l_high)
-    label.delete(lbl_high)
-    line.delete(l_low)
-    label.delete(lbl_low)
-    line.delete(l_ppd_low)
-    label.delete(lbl_ppd_low)
-    line.delete(l_today_low)
-    label.delete(lbl_today_low)
-    line.delete(l_or5h)
-    label.delete(lbl_or5h)
-    line.delete(l_or30h)
-    label.delete(lbl_or30h)
+    // PERF: the level lines/labels below are persistent objects -
+    // created once and updated in place on later executions instead
+    // of being deleted and re-created on every tick.
 
     if show_20
-        l_sma20   := line.new(active_session_start_bar, active_sma20_d, target_index, active_sma20_d, color=col_20, width=w_20, style=get_style(style_20))
-        lbl_sma20 := label.new(target_label_index, active_sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", active_sma20_d))
+        if na(l_sma20)
+            l_sma20   := line.new(active_session_start_bar, active_sma20_d, target_index, active_sma20_d, color=col_20, width=w_20, style=get_style(style_20))
+            lbl_sma20 := label.new(target_label_index, active_sma20_d, get_name("20D SMA"), color=color.new(color.black, 100), textcolor=col_20, style=label.style_label_left, tooltip=get_text("20D SMA", active_sma20_d))
+        else
+            line.set_xy1(l_sma20, active_session_start_bar, active_sma20_d)
+            line.set_xy2(l_sma20, target_index, active_sma20_d)
+            label.set_xy(lbl_sma20, target_label_index, active_sma20_d)
+            label.set_tooltip(lbl_sma20, get_text("20D SMA", active_sma20_d))
+    else
+        line.delete(l_sma20)
+        label.delete(lbl_sma20)
+        l_sma20 := na
+        lbl_sma20 := na
     if show_10
-        l_sma10   := line.new(active_session_start_bar, active_sma10_d, target_index, active_sma10_d, color=col_10, width=w_10, style=get_style(style_10))
-        lbl_sma10 := label.new(target_label_index, active_sma10_d, get_name("10D SMA"), color=color.new(color.black, 100), textcolor=col_10, style=label.style_label_left, tooltip=get_text("10D SMA", active_sma10_d))
+        if na(l_sma10)
+            l_sma10   := line.new(active_session_start_bar, active_sma10_d, target_index, active_sma10_d, color=col_10, width=w_10, style=get_style(style_10))
+            lbl_sma10 := label.new(target_label_index, active_sma10_d, get_name("10D SMA"), color=color.new(color.black, 100), textcolor=col_10, style=label.style_label_left, tooltip=get_text("10D SMA", active_sma10_d))
+        else
+            line.set_xy1(l_sma10, active_session_start_bar, active_sma10_d)
+            line.set_xy2(l_sma10, target_index, active_sma10_d)
+            label.set_xy(lbl_sma10, target_label_index, active_sma10_d)
+            label.set_tooltip(lbl_sma10, get_text("10D SMA", active_sma10_d))
+    else
+        line.delete(l_sma10)
+        label.delete(lbl_sma10)
+        l_sma10 := na
+        lbl_sma10 := na
     if show_50
-        l_sma50   := line.new(active_session_start_bar, active_sma50_d, target_index, active_sma50_d, color=col_50, width=w_50, style=get_style(style_50))
-        lbl_sma50 := label.new(target_label_index, active_sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", active_sma50_d))
+        if na(l_sma50)
+            l_sma50   := line.new(active_session_start_bar, active_sma50_d, target_index, active_sma50_d, color=col_50, width=w_50, style=get_style(style_50))
+            lbl_sma50 := label.new(target_label_index, active_sma50_d, get_name("50D SMA"), color=color.new(color.black, 100), textcolor=col_50, style=label.style_label_left, tooltip=get_text("50D SMA", active_sma50_d))
+        else
+            line.set_xy1(l_sma50, active_session_start_bar, active_sma50_d)
+            line.set_xy2(l_sma50, target_index, active_sma50_d)
+            label.set_xy(lbl_sma50, target_label_index, active_sma50_d)
+            label.set_tooltip(lbl_sma50, get_text("50D SMA", active_sma50_d))
+    else
+        line.delete(l_sma50)
+        label.delete(lbl_sma50)
+        l_sma50 := na
+        lbl_sma50 := na
     if show_150
-        l_sma150  := line.new(active_session_start_bar, active_sma150_d, target_index, active_sma150_d, color=col_150, width=w_150, style=get_style(style_150))
-        lbl_sma150:= label.new(target_label_index, active_sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", active_sma150_d))
+        if na(l_sma150)
+            l_sma150  := line.new(active_session_start_bar, active_sma150_d, target_index, active_sma150_d, color=col_150, width=w_150, style=get_style(style_150))
+            lbl_sma150:= label.new(target_label_index, active_sma150_d, get_name("150D SMA"), color=color.new(color.black, 100), textcolor=col_150, style=label.style_label_left, tooltip=get_text("150D SMA", active_sma150_d))
+        else
+            line.set_xy1(l_sma150, active_session_start_bar, active_sma150_d)
+            line.set_xy2(l_sma150, target_index, active_sma150_d)
+            label.set_xy(lbl_sma150, target_label_index, active_sma150_d)
+            label.set_tooltip(lbl_sma150, get_text("150D SMA", active_sma150_d))
+    else
+        line.delete(l_sma150)
+        label.delete(lbl_sma150)
+        l_sma150 := na
+        lbl_sma150 := na
     if show_200
-        l_sma200  := line.new(active_session_start_bar, active_sma200_d, target_index, active_sma200_d, color=col_200, width=w_200, style=get_style(style_200))
-        lbl_sma200:= label.new(target_label_index, active_sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", active_sma200_d))
+        if na(l_sma200)
+            l_sma200  := line.new(active_session_start_bar, active_sma200_d, target_index, active_sma200_d, color=col_200, width=w_200, style=get_style(style_200))
+            lbl_sma200:= label.new(target_label_index, active_sma200_d, get_name("200D SMA"), color=color.new(color.black, 100), textcolor=col_200, style=label.style_label_left, tooltip=get_text("200D SMA", active_sma200_d))
+        else
+            line.set_xy1(l_sma200, active_session_start_bar, active_sma200_d)
+            line.set_xy2(l_sma200, target_index, active_sma200_d)
+            label.set_xy(lbl_sma200, target_label_index, active_sma200_d)
+            label.set_tooltip(lbl_sma200, get_text("200D SMA", active_sma200_d))
+    else
+        line.delete(l_sma200)
+        label.delete(lbl_sma200)
+        l_sma200 := na
+        lbl_sma200 := na
 
     if show_ema10
-        l_ema10   := line.new(active_session_start_bar, active_ema10_d, target_index, active_ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
-        lbl_ema10 := label.new(target_label_index, active_ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", active_ema10_d))
+        if na(l_ema10)
+            l_ema10   := line.new(active_session_start_bar, active_ema10_d, target_index, active_ema10_d, color=col_ema10, width=w_ema10, style=get_style(style_ema10))
+            lbl_ema10 := label.new(target_label_index, active_ema10_d, get_name("10D EMA"), color=color.new(color.black, 100), textcolor=col_ema10, style=label.style_label_left, tooltip=get_text("10D EMA", active_ema10_d))
+        else
+            line.set_xy1(l_ema10, active_session_start_bar, active_ema10_d)
+            line.set_xy2(l_ema10, target_index, active_ema10_d)
+            label.set_xy(lbl_ema10, target_label_index, active_ema10_d)
+            label.set_tooltip(lbl_ema10, get_text("10D EMA", active_ema10_d))
+    else
+        line.delete(l_ema10)
+        label.delete(lbl_ema10)
+        l_ema10 := na
+        lbl_ema10 := na
     if show_ema20
-        l_ema20   := line.new(active_session_start_bar, active_ema20_d, target_index, active_ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
-        lbl_ema20 := label.new(target_label_index, active_ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", active_ema20_d))
+        if na(l_ema20)
+            l_ema20   := line.new(active_session_start_bar, active_ema20_d, target_index, active_ema20_d, color=col_ema20, width=w_ema20, style=get_style(style_ema20))
+            lbl_ema20 := label.new(target_label_index, active_ema20_d, get_name("20D EMA"), color=color.new(color.black, 100), textcolor=col_ema20, style=label.style_label_left, tooltip=get_text("20D EMA", active_ema20_d))
+        else
+            line.set_xy1(l_ema20, active_session_start_bar, active_ema20_d)
+            line.set_xy2(l_ema20, target_index, active_ema20_d)
+            label.set_xy(lbl_ema20, target_label_index, active_ema20_d)
+            label.set_tooltip(lbl_ema20, get_text("20D EMA", active_ema20_d))
+    else
+        line.delete(l_ema20)
+        label.delete(lbl_ema20)
+        l_ema20 := na
+        lbl_ema20 := na
     if show_ema50
-        l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
-        lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
+        if na(l_ema50)
+            l_ema50   := line.new(active_session_start_bar, active_ema50_d, target_index, active_ema50_d, color=col_ema50, width=w_ema50, style=get_style(style_ema50))
+            lbl_ema50 := label.new(target_label_index, active_ema50_d, get_name("50D EMA"), color=color.new(color.black, 100), textcolor=col_ema50, style=label.style_label_left, tooltip=get_text("50D EMA", active_ema50_d))
+        else
+            line.set_xy1(l_ema50, active_session_start_bar, active_ema50_d)
+            line.set_xy2(l_ema50, target_index, active_ema50_d)
+            label.set_xy(lbl_ema50, target_label_index, active_ema50_d)
+            label.set_tooltip(lbl_ema50, get_text("50D EMA", active_ema50_d))
+    else
+        line.delete(l_ema50)
+        label.delete(lbl_ema50)
+        l_ema50 := na
+        lbl_ema50 := na
 
     if show_h and not na(active_prev_high)
-        l_high   := line.new(active_session_start_bar, active_prev_high, target_index, active_prev_high, color=col_h, width=w_h, style=get_style(style_h))
-        lbl_high := label.new(target_label_index, active_prev_high, get_text("PD High", active_prev_high), color=color.new(color.black, 100), textcolor=col_h, style=label.style_label_left, tooltip=get_text("PD High", active_prev_high))
+        if na(l_high)
+            l_high   := line.new(active_session_start_bar, active_prev_high, target_index, active_prev_high, color=col_h, width=w_h, style=get_style(style_h))
+            lbl_high := label.new(target_label_index, active_prev_high, get_text("PD High", active_prev_high), color=color.new(color.black, 100), textcolor=col_h, style=label.style_label_left, tooltip=get_text("PD High", active_prev_high))
+        else
+            line.set_xy1(l_high, active_session_start_bar, active_prev_high)
+            line.set_xy2(l_high, target_index, active_prev_high)
+            label.set_xy(lbl_high, target_label_index, active_prev_high)
+            label.set_text(lbl_high, get_text("PD High", active_prev_high))
+            label.set_tooltip(lbl_high, get_text("PD High", active_prev_high))
+    else
+        line.delete(l_high)
+        label.delete(lbl_high)
+        l_high := na
+        lbl_high := na
     if show_l and not na(active_prev_low)
-        l_low    := line.new(active_session_start_bar, active_prev_low, target_index, active_prev_low, color=col_l, width=w_l, style=get_style(style_l))
-        lbl_low  := label.new(target_label_index, active_prev_low, get_text("PD Low", active_prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", active_prev_low))
+        if na(l_low)
+            l_low    := line.new(active_session_start_bar, active_prev_low, target_index, active_prev_low, color=col_l, width=w_l, style=get_style(style_l))
+            lbl_low  := label.new(target_label_index, active_prev_low, get_text("PD Low", active_prev_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PD Low", active_prev_low))
+        else
+            line.set_xy1(l_low, active_session_start_bar, active_prev_low)
+            line.set_xy2(l_low, target_index, active_prev_low)
+            label.set_xy(lbl_low, target_label_index, active_prev_low)
+            label.set_text(lbl_low, get_text("PD Low", active_prev_low))
+            label.set_tooltip(lbl_low, get_text("PD Low", active_prev_low))
+    else
+        line.delete(l_low)
+        label.delete(lbl_low)
+        l_low := na
+        lbl_low := na
     if show_ppd_low_line
-        l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low, color=col_l, width=w_l, style=get_style(style_l))
-        lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text("PPD Low", active_ppd_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PPD Low", active_ppd_low))
+        if na(l_ppd_low)
+            l_ppd_low   := line.new(active_session_start_bar, active_ppd_low, target_index, active_ppd_low, color=col_l, width=w_l, style=get_style(style_l))
+            lbl_ppd_low := label.new(target_label_index, active_ppd_low, get_text("PPD Low", active_ppd_low), color=color.new(color.black, 100), textcolor=col_l, style=label.style_label_left, tooltip=get_text("PPD Low", active_ppd_low))
+        else
+            line.set_xy1(l_ppd_low, active_session_start_bar, active_ppd_low)
+            line.set_xy2(l_ppd_low, target_index, active_ppd_low)
+            label.set_xy(lbl_ppd_low, target_label_index, active_ppd_low)
+            label.set_text(lbl_ppd_low, get_text("PPD Low", active_ppd_low))
+            label.set_tooltip(lbl_ppd_low, get_text("PPD Low", active_ppd_low))
+    else
+        line.delete(l_ppd_low)
+        label.delete(lbl_ppd_low)
+        l_ppd_low := na
+        lbl_ppd_low := na
     if show_today_low and not na(active_session_lod)
-        l_today_low   := line.new(active_session_start_bar, active_session_lod, target_index, active_session_lod, color=col_today_low, width=w_today_low, style=get_style(style_today_low))
-        lbl_today_low := label.new(target_label_index, active_session_lod, get_text("Today Low", active_session_lod), color=color.new(color.black, 100), textcolor=col_today_low, style=label.style_label_left, tooltip=get_text("Today Low", active_session_lod))
+        if na(l_today_low)
+            l_today_low   := line.new(active_session_start_bar, active_session_lod, target_index, active_session_lod, color=col_today_low, width=w_today_low, style=get_style(style_today_low))
+            lbl_today_low := label.new(target_label_index, active_session_lod, get_text("Today Low", active_session_lod), color=color.new(color.black, 100), textcolor=col_today_low, style=label.style_label_left, tooltip=get_text("Today Low", active_session_lod))
+        else
+            line.set_xy1(l_today_low, active_session_start_bar, active_session_lod)
+            line.set_xy2(l_today_low, target_index, active_session_lod)
+            label.set_xy(lbl_today_low, target_label_index, active_session_lod)
+            label.set_text(lbl_today_low, get_text("Today Low", active_session_lod))
+            label.set_tooltip(lbl_today_low, get_text("Today Low", active_session_lod))
+    else
+        line.delete(l_today_low)
+        label.delete(lbl_today_low)
+        l_today_low := na
+        lbl_today_low := na
 
 if timeframe.isintraday and not na(active_session_start_bar) and is_data_anchor_bar
     if show_10 and not na(l_sma10)

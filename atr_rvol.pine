@@ -46,7 +46,10 @@ lower_premarket = request.security_lower_tf(syminfo.tickerid, lower_tf, session.
 // On daily/weekly/monthly charts, TradingView's bar low may include extended hours.
 // Scan lower-timeframe regular-session bars so LoD matches the RTH low.
 var float daily_rth_low = na
-if not timeframe.isintraday
+// PERF: this scan walks every 1-minute intrabar of the bar, and the result
+// only feeds the last bar's table display - so only the last bar computes
+// it. Historical bars skip the scan entirely.
+if not timeframe.isintraday and barstate.islast
     daily_rth_low := na
     if array.size(lower_lows) > 0
         for i = 0 to array.size(lower_lows) - 1
@@ -137,7 +140,12 @@ var rvol_frac_by_slot = array.new_float(rvol_proj_slots * (rvol_intraday_days + 
 float proj_today_cum = na
 int proj_today_slot = na
 float proj_avg_frac = na
-if timeframe.isdaily
+// PERF: the projection block shifts and rebuilds the stored fraction
+// curves on every daily bar, but the curves in force at the last bar are
+// fully determined by the last (rvol_intraday_days + 1) bars' executions -
+// earlier bars' contributions have been shifted out. Run it only for
+// those bars; the displayed projection is unchanged.
+if timeframe.isdaily and bar_index >= last_bar_index - rvol_intraday_days
     // Shift stored days: block d holds one past session's fraction curve
     // (cumulative share of the day's pre-market + RTH volume per 5-minute
     // checkpoint); the last block is rewritten for the current day below.
